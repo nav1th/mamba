@@ -7,4 +7,5 @@ def grab_args():
     parser.add_argument('-f','--file',required=False,type=str,nargs='+')
     parser.add_argument('-n','--non_promiscous',required=False)
     parser.add_argument("-e","--filter",required=False,type=str)
+    parser.add_argument("-c","--count",required=False,type=int,default=0)
     return parser.parse_args()
