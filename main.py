@@ -13,12 +13,12 @@ def find_interface():
     device = devices[0].name
     return device
 
-def get_device_handle(device: str,file: str,promiscous: bool,errbuf: Array[c_char]):
+def get_live_handle(device,file: str,promiscous: bool,errbuf: Array[c_char]):
     if args.file == None:
         handle: pcap_t =  open_live(device,PCAP_BUF_SIZE,c_int(promiscous), c_int(1000),errbuf) #open device for live capture
         return handle
     else:
-        handle: pcap_t = open_dead(file.encode(),errbuf)
+        handle: pcap_t = open_offline(file.encode(),errbuf)
         return handle
 
 def get_ll_hl(handle: pcap_t):
@@ -53,16 +53,13 @@ if __name__ == "__main__":
         device = find_interface()
     else:
         device  = args.interface.encode() #interface which user specified
-        net: bpf_u_int32 = bpf_u_int32(0)
-        mask: bpf_u_int32 = bpf_u_int32(0)
-        exit(1)
 
     if args.non_promiscous == None:
         promiscous = True
     else:
         promiscous = False
 
-    pcap_handle = get_device_handle(device,args.file,promiscous,errbuf)
+    pcap_handle = get_live_handle(device,args.file,promiscous,errbuf)
 
     if not pcap_handle:
         emesg(f"{errbuf.raw.decode()}")
