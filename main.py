@@ -4,6 +4,7 @@ from args import grab_args
 from libpcap import *
 from ctypes import *
 import signal
+import time
 
 config(LIBPCAP=None)
 
@@ -28,15 +29,17 @@ def get_ll_hl(handle: pcap_t):
     elif ll_type == DLT_EN10MB: ## ethernet is all im handling for now, may expand
         return 14
 
-def stop_capture():
-    pcap_stats = stats(pcap_handle)
+def stop_capture(signum, frame):
+    pstats = stat()
+    pcap_stats = stats(pcap_handle,byref(pstats))
     if pcap_stats >= c_int(0):
         print(f"{packets} packets captured")
     exit(0)
 
 @CFUNCTYPE(None,POINTER(c_ubyte),POINTER(pkthdr),POINTER(c_ubyte))
 def handle_packets(user,header,packet):
-    pass
+    iphdr = pcap_
+    exit(1)
  
 if __name__ == "__main__":
     errbuf: Array[c_char] = create_string_buffer(PCAP_ERRBUF_SIZE) #for storing error messages
@@ -79,14 +82,14 @@ if __name__ == "__main__":
             emesg(f"could not install filter {args.filter}: {geterr(pcap_handle)}")
             exit(4)
 
-    #signal.signal(signal.SIGINT,stop_capture)
-    #signal.signal(signal.SIGTERM,stop_capture)
-    #signal.signal(signal.SIGQUIT,stop_capture)
+    signal.signal(signal.SIGINT,stop_capture)
+    signal.signal(signal.SIGTERM,stop_capture)
+    signal.signal(signal.SIGQUIT,stop_capture)
 
-    #if loop(pcap_handle,c_int(args.count),handle_packets,c_ubyte(0)) < c_int(0):
-    #    emesg(f"pcap_loop failed: {geterr(pcap_handle).raw.decode()}")
-    #    exit(5)
+    if loop(pcap_handle,c_int(args.count),handle_packets,c_ubyte(0)) < c_int(0):
+        emesg(f"pcap_loop failed: {geterr(pcap_handle).raw.decode()}")
+        exit(5)
 
-    #stop_capture(0)
+    stop_capture(0)
 
 
