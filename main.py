@@ -1,95 +1,78 @@
 #!/bin/python3
 from msg import emesg
 from args import grab_args
-from libpcap import *
-from ctypes import *
-import signal
-import time
+import pcap
+import struct
 
-config(LIBPCAP=None)
 
-def find_interface():
-    devices = pointer(pcap_if.from_address(1000)) 
-    findalldevs(byref(devices),errbuf) #get list of interfaces
-    device = devices[0].name
-    return device
 
-def get_live_handle(device,file: str,promiscous: bool,errbuf: Array[c_char]):
-    if args.file == None:
-        handle: pcap_t =  open_live(device,PCAP_BUF_SIZE,c_int(promiscous), c_int(1000),errbuf) #open device for live capture
-        return handle
-    else:
-        handle: pcap_t = open_offline(file.encode(),errbuf)
-        return handle
 
-def get_ll_hl(handle: pcap_t):
-    ll_type = datalink(handle)
-    if ll_type == PCAP_ERROR:
-        return None;
-    elif ll_type == DLT_EN10MB: ## ethernet is all im handling for now, may expand
-        return 14
 
-def stop_capture(signum, frame):
-    pstats = stat()
-    pcap_stats = stats(pcap_handle,byref(pstats))
-    if pcap_stats >= c_int(0):
-        print(f"{packets} packets captured")
-    exit(0)
+def handle_packets(timestamp,pkt,*args):
 
-@CFUNCTYPE(None,POINTER(c_ubyte),POINTER(pkthdr),POINTER(c_ubyte))
-def handle_packets(user,header,packet):
-    iphdr = pcap_
-    exit(1)
- 
-if __name__ == "__main__":
-    errbuf: Array[c_char] = create_string_buffer(PCAP_ERRBUF_SIZE) #for storing error messages
-    bpf = bpf_program.in_dll
-    net: bpf_u_int32 = bpf_u_int32(0)
-    mask: bpf_u_int32 = bpf_u_int32(0)
-    packets = 0
-    pcap_handle = POINTER(pcap_t)
+        format_ip_addr = lambda pkt, offset: '.'.join(str(pkt[i]) for i in range(offset, offset + 4))
+        format_mac_addr = lambda bytes_addr: ':'.join(map('{:02x}'.format,bytes_addr)).upper()
+        dmac,smac,proto = struct.unpack('!6s 6s H',pkt[:handle.dloff]) 
+        srcip = struct.unpack("!4B",pkt[handle.dloff+12])
+        """ 
+        unpack destination MAC & source MAC & length of ethernet frame 
+        most devices will using this program will be using IEEE 802.3 (ethernet) frames
+        """
+        ##TODO
+        #figure how the fuck to inspect other deets of  the ipv4 header
+
+        #in most cases will be 14 bytes because most packet sniffer's will be using 802.3 (ethernet) frames
+        print(pkt)
+        exit()
+
+        dmac = format_mac_addr(dmac)
+        smac = format_mac_addr(smac)
+        print(f"\tSRC_MAC: %-16s\tSRC_DMAC: %-16s" %(smac,dmac))
+
+        byte_after_dl = "0{0:b}".format(pkt[handle.dloff]) #the first byte after Datalink usually tells if it's IPv4, IPv6 etc.
+        
+
+
+
+        if int(byte_after_dl[:4],2) == 4: #if it's IPv4 
+            print(f'\tIP_SRC:  %-16s\tIP_DST:   %-16s' % (format_ip_addr(pkt, handle.dloff + 12), format_ip_addr(pkt, handle.dloff + 16)))
+        if int(byte_after_dl[:4],2) == 6: #if it's IPv6:
+            pass
+        print("------------------------------------------------------------------------------------------------")
     
+
+if __name__ == "__main__":
+      
     args = grab_args()
 
-    
-    if args.interface == None:
-        device = find_interface()
-    else:
-        device  = args.interface.encode() #interface which user specified
+    if args.interface and args.readpcap:
+        emesg("can't read from pcap and open interface for reading at once")
+        exit(1)
 
     if args.non_promiscous == None:
         promiscous = True
     else:
         promiscous = False
-
-    pcap_handle = get_live_handle(device,args.file,promiscous,errbuf)
-
-    if not pcap_handle:
-        emesg(f"{errbuf.raw.decode()}")
-        exit(1)
-
-    ll_hl = get_ll_hl(pcap_handle)
-    if ll_hl == None: #check if device supports ethernet headers
-        emesg(f"Device {device} doesn't provide Ethernet headers - not supported");
+    
+    try:
+        handle = pcap.pcap(args.interface,promisc=bool(args.non_promiscous),timeout_ms=500,immediate=False)
+    except OSError as e:
+        error = str(e)
+        emesg(f"can't open interface due to '{error[90:-1]}'")
         exit(2)
+    print(handle.name)
 
-    if args.filter != None:
-        if compile(pcap_handle,bpf,args.filter,0,net) == PCAP_ERROR:
-            emesg(f"could not parse filter {args.filter}: {geterr(pcap_handle)}")
-            exit(3)
+    if args.filter: #set any bpf filters
+        handle.setfilter(args.filter)
 
-        if setfilter(pcap_handle, bpf) == PCAP_ERROR:
-            emesg(f"could not install filter {args.filter}: {geterr(pcap_handle)}")
-            exit(4)
 
-    signal.signal(signal.SIGINT,stop_capture)
-    signal.signal(signal.SIGTERM,stop_capture)
-    signal.signal(signal.SIGQUIT,stop_capture)
+    if handle.dloff != 14:
+        emesg("device can't handle ethernet frames, exiting...")
 
-    if loop(pcap_handle,c_int(args.count),handle_packets,c_ubyte(0)) < c_int(0):
-        emesg(f"pcap_loop failed: {geterr(pcap_handle).raw.decode()}")
-        exit(5)
+    packets = 0
 
-    stop_capture(0)
+
+    handle.loop(0,handle_packets,packets)
+
 
 
