@@ -13,7 +13,8 @@ def handle_packets(timestamp,pkt,*args):
         format_ip_addr = lambda pkt, offset: '.'.join(str(pkt[i]) for i in range(offset, offset + 4))
         format_mac_addr = lambda bytes_addr: ':'.join(map('{:02x}'.format,bytes_addr)).upper()
         dmac,smac,proto = struct.unpack('!6s 6s H',pkt[:handle.dloff]) 
-        srcip = struct.unpack("!4B",pkt[handle.dloff+12])
+        srcip = struct.unpack("!4B",bytes(pkt[handle.dloff+12]))
+
         """ 
         unpack destination MAC & source MAC & length of ethernet frame 
         most devices will using this program will be using IEEE 802.3 (ethernet) frames
