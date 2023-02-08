@@ -6,26 +6,22 @@ import scapy.all as s
 import scapy.layers.l2 as l2
 import scapy.layers.inet as ipv4
 
-def get_p_layers(pkt):
-    cnt = 0
-    while True:
-        layer = pkt.getlayer(cnt)
-        if layer is None:
-            break
-        yield layer
-        cnt += 1
+
 
 def callback(pkt):
     tcpip = pkt.layers()
-    match tcpip[0]: # layer 2 traffic
-        case l2.Ether: #if l2 is 802.3
-            print(tcpip[0])
-        case l2.ARP: #if l2
+  #print(tcpip)
+    layer2 = tcpip[0] 
+    try: #ordinary packet structure
+        net = tcpip[1]
+        tran = tcpip[2]
+        app = tcpip[3]
+        print(f"SRC: {layer2.src.i2h(pkt,None)} | DST: {layer2.dst.i2h(pkt,None)}")
+        print(f"IP_SRC: {net.src} | IP_DST: {net.dst}")
+    except: #likely arp
+        arp = tcpip[1]
+        if arp == l2.ARP:
             pass
-    
-    
-
-    
 
 
 if __name__ == "__main__":
@@ -39,7 +35,7 @@ if __name__ == "__main__":
     colour = not args.colourless
 
     try: 
-        handle = s.sniff(prn=callback,iface=args.interface,filter=args.filter,count=1)
+        handle = s.sniff(prn=callback,iface=args.interface,filter=args.filter,count=0)
     except (PermissionError, OSError) as e:
        m.err(f"could not sniff on {interface} due to '{e.strerror.lower()}'",colour)
     except KeyboardInterrupt: 

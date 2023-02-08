@@ -1,0 +1,10 @@
+{
+    colour: {
+        "ARP" : "ORANGE"
+        "HTTP" : "YELLOW"
+        "TCP" : "BLUE"
+        "HTTPS" : "GREEN"
+        "TELNET" : "PURPLE"
+        "SSH" :   "GREY"
+    }
+}
