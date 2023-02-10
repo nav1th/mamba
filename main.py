@@ -8,15 +8,26 @@ import scapy.layers.inet6 as ipv6
 import scapy.layers.http
 import json
 
+# Opening JSON file
+with open('colour.json') as f:
+    #returns JSON object as 
+    #a dictionary
+    data = json.load(f)
+  
+    #Iterating through the json
+    #list
+    for i in data['colour']:
+        print(i)
+exit()
 
 
-def callback(pkt):
+def callback(pkt): #handles sniffed packets
     if pkt.haslayer(layer2.ARP):
         if pkt.haslayer(layer2.Ether):
-            print(f"ETHER_SRC: {pkt[layer2.Ether].src} | ETHER_DST: {pkt[layer2.Ether].dst}",end=" ")
-            print(f"ARP: {pkt[layer2.ARP].mysummary()}")
-    if pkt.haslayer(scapy.layers.http.HTTPRequest):
-        if pkt.haslayer(scapy.layers.http)
+            print(f"ETHER_SRC: {pkt[layer2.Ether].src} | ETHER_DST: {pkt[layer2.Ether].dst}",end=" | ")
+        print(f"ARP: {pkt[layer2.ARP].mysummary()}")
+    if pkt.haslayer(scapy.layers.http.HTTPRequest): 
+        print(f"IP SRC: {pkt[ipv4.IP].src}")
         print("http")
 
 
