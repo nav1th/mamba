@@ -11,9 +11,11 @@ import scapy.layers.http
 def proc_pkt(pkt): #handles sniffed packets
     num : int = 0
     if pkt.haslayer(layer2.ARP):
-        print(f"ETHER_SRC: {pkt[layer2.Ether].src} | ETHER_DST: {pkt[layer2.Ether].dst}",
+        arp = pkt[layer2.ARP].mysummary()
+        arp = " ".join([word for word in arp.split() if word not in ["ARP"]]) 
+        print(f"PKT: {num} | ETHER_SRC: {pkt[layer2.Ether].src} | ETHER_DST: {pkt[layer2.Ether].dst}",
         end=" | ")
-        print(f"ARP: {pkt[layer2.ARP].mysummary()}")
+        print(f"ARP: {arp}")
     if pkt.haslayer(scapy.layers.http.HTTPRequest): 
         url = (pkt[scapy.layers.http.HTTPRequest].Host+pkt[scapy.layers.http.HTTPRequest].Path).decode()
         print(f"PKT: {num} | IP_SRC: {pkt[ipv4.IP].src} | IP_DST: {pkt[ipv4.IP].dst}",
@@ -34,11 +36,7 @@ if __name__ == "__main__":
 
     try: 
         capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=0)
-        if args.output:
+        if args.write:
             s.wrpcap(args.output,capture)
     except (PermissionError, OSError) as e:
        m.err(f"could not sniff on {interface} due to '{e.strerror.lower()}'",colour)
-    except KeyboardInterrupt: 
-        m.info("Program shutdown requested.",colour)
-        m.info("Quitting...",colour)
-        exit(0)

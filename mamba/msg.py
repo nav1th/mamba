@@ -1,5 +1,8 @@
 from colorama import Style, Fore 
+import curses
 import sys
+
+
 def err(msg: str, colour: bool):
     if colour:
         sys.stderr.writelines(Fore.RED + Style.BRIGHT + "[!]" 
@@ -22,3 +25,19 @@ def warn(msg: str, colour: bool):
         
     
     
+def cprint(colour: bool, fg: str , bg: str): #TODO coloured output for protos
+    match fg:
+        case "YELLOW":
+            print(Fore.YELLOW,end="")
+        case "BLUE":
+            print(Fore.BLUE,end="")
+        case "GREEN":
+            print(Fore.GREEN,end="")
+        case "CYAN":
+            print(Fore.CYAN,end="")
+        case "YELLOW":
+            print(Fore.YELLOW,end="")
+        case "YELLOW":
+            print(Fore.YELLOW,end="")
+    print(f"{fg}")
+    pass
