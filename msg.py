@@ -5,20 +5,20 @@ def err(msg: str, colour: bool):
         sys.stderr.writelines(Fore.RED + Style.BRIGHT + "[!]" 
                           + Style.RESET_ALL + f" {msg}\n")
     else:
-        sys.stderr.writelines(f"error: {msg}")
+        sys.stderr.writelines(f"error: {msg}\n")
 
 def info(msg: str, colour: bool):
     if colour:
         print(Fore.WHITE + Style.BRIGHT + "[*]" + Style.RESET_ALL + f" {msg}" )
     else:
-        print(f"info: {msg} ")
+        print(f"info: {msg}\n")
 
 def warn(msg: str, colour: bool):
     if colour:
         sys.stderr.writelines(Fore.YELLOW + Style.BRIGHT + "[?]" 
                           + Style.RESET_ALL + f" {msg}\n")
     else:
-        sys.stderr.writelines(f"warning: {msg}")
+        sys.stderr.writelines(f"warning: {msg}\n")
         
     
     

@@ -7,11 +7,11 @@ def grab_args():
                         help="Select network interface to listen on")
     parser.add_argument("-r","--readpcap",required=False,type=str,nargs="+",default=False,
                         help="Select '.pcap' file to read packets from")
-    parser.add_argument("-n","--non_promiscous",required=False, action="store_true",
+    parser.add_argument("-n","--non_promiscous",required=False, action="store_false",
                         help="Listen in non-promiscous mode, e.g only get packets addressed to your network interface")
     parser.add_argument("-f","--filter",required=False,type=str,help="Uses BPF syntax to filter packets")
     parser.add_argument("-c","--count",required=False,type=int,default=0)
     parser.add_argument("-v","--verbose", required=False, action="store_true")
-    parser.add_argument("-cL","--colourless",required=False,action="store_true")
-    parser.add_argument("-o",required=False,action="store_true")
+    parser.add_argument("-cL","--colourless",required=False,action="store_false")
+    parser.add_argument("-w","--write",required=False,help="Writes packet capture to file")
     return parser.parse_args()
