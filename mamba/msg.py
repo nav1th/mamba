@@ -1,6 +1,6 @@
 from colorama import Style, Fore 
-import curses
 import sys
+import json
 
 
 def err(msg: str, colour: bool):
@@ -25,7 +25,10 @@ def warn(msg: str, colour: bool):
         
     
     
-def cprint(colour: bool, fg: str , bg: str): #TODO coloured output for protos
+def cprint(content: str, colour: bool, fg="", bg="",): #TODO coloured output for protos
+    if not colour: #regular print if no colours
+        print(content)
+        return
     match fg:
         case "YELLOW":
             print(Fore.YELLOW,end="")
@@ -39,5 +42,4 @@ def cprint(colour: bool, fg: str , bg: str): #TODO coloured output for protos
             print(Fore.YELLOW,end="")
         case "YELLOW":
             print(Fore.YELLOW,end="")
-    print(f"{fg}")
     pass
