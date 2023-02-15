@@ -6,7 +6,7 @@ import scapy.layers.l2 as layer2
 import scapy.layers.inet as inet
 import scapy.layers.inet6 as inet6
 import scapy.layers.http
-import errno
+import argparse
 from collections import Counter
 import os.path
 
@@ -26,8 +26,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
         elif arp.op == 2: #ARP I'm your man here's your MAC
             print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
-
-
+    
 #TODO HTTP Request
 ''' 
     if pkt.haslayer(scapy.layers.http.HTTPRequest): 
@@ -45,6 +44,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
         packet_count.update([key])
 '''
 
+
+        
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
 
@@ -54,8 +55,10 @@ if __name__ == "__main__":
     write_pcap = args.write
     read_pcap = args.read
     interface = args.interface
+    count = args.count
     if not interface:
         interface = s.conf.iface
+
 
 
     if colour: #TODO colour will be last thing to worry about
@@ -67,7 +70,7 @@ if __name__ == "__main__":
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
         if os.path.exists(write_pcap) and  \
-        (not m.warn_confirm(f"file '{write_pcap}' exists, will be overwritten",colour)): #in case user accidently overwrites file
+        (not m.warn_confirm(f"'{write_pcap}' exists, it will be overwritten.",colour)): #in case user accidently overwrites file
             m.info("understood, exiting...",colour)
             exit(0)
         else: #try to write capture
@@ -79,25 +82,24 @@ if __name__ == "__main__":
             else:
                 f.close() # close file, so nothing messes up
 
-    if read_pcap:
-        try: 
-            f = open(read_pcap, "r")
-        except OSError as e:
-            m.err(f"could not read '{read_pcap}' due to '{e.strerror.lower()}'",colour)
-        else:
-            f.close()
 
     packet_count = Counter() # count the number of packets captured
 
-    try: 
-        if read_pcap:
+    if read_pcap:
+        try: 
             capture = s.sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count)
+        except OSError as e:
+           m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
         else:
+            if write_pcap: 
+                s.wrpcap(write_pcap,capture)
+    else: #must be interface being activated then
+        try: 
             capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
-    except OSError as e:
-       m.err(f"could not sniff on {interface} due to '{e.strerror.lower()}'",colour)
-       exit(e.errno)
-    else:
-        if write_pcap: 
-            s.wrpcap(write_pcap,capture)
+        except OSError as e:
+           m.err(f"failed to sniff on {interface} due to '{e.strerror.lower()}'",colour)
+           exit(e.errno)
+        else:
+            if write_pcap: 
+                s.wrpcap(write_pcap,capture)
 

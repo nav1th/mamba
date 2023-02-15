@@ -1,4 +1,5 @@
 import argparse
+import msg as m
 def grab_args():
     parser = argparse.ArgumentParser(
                         prog = "mamba",
@@ -15,4 +16,8 @@ def grab_args():
     parser.add_argument("-c","--count",required=False,type=int,default=0)
     parser.add_argument("-v","--verbose", required=False, action="store_true")
     parser.add_argument("-cL","--colourless",required=False,action="store_false")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.interface and args.read:
+        m.err("can't read from 'pcap' and listen on interface at the same time",args.colourless)
+        exit(1)
+    return args

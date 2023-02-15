@@ -12,7 +12,7 @@ def err(content: str, colour: bool):
 
 def info(content: str, colour: bool):
     if colour:
-        print(Fore.WHITE + Style.BRIGHT + "[*]" + Style.RESET_ALL + f" {content}" )
+        print(Fore.BLUE + Style.BRIGHT + "[*]" + Style.RESET_ALL + f" {content}" )
     else:
         print(f"info: {content}\n")
 
@@ -25,16 +25,15 @@ def warn(content: str, colour: bool):
 
 def warn_confirm(content: str, colour: bool) -> bool:
     if colour:
-        print(f"{content}")
-        user_input = input(f"Are you sure? [{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}N{Style.RESET_ALL}]")
-        if user_input == "y" or user_input == "Y":
-            return True
-        else: 
-            return False
+        print(f"{Fore.YELLOW}{Style.BRIGHT}[?] {Style.RESET_ALL}{content}", end=" ")
+        user_input = input(f"are you sure? [{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}N{Style.RESET_ALL}]: ")
+    else:
+        print(f"warning: {content}", end=" ")
+        user_input = input(f"are you sure? [y/N]: ")
 
-    print(f"{content}")
-    user_input = input(f"Are you sure? [y/N]")
-    if user_input
+    if user_input == "y":
+        return True
+    return False
 
 
 
