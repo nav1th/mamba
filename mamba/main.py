@@ -6,7 +6,6 @@ import scapy.layers.l2 as layer2
 import scapy.layers.inet as inet
 import scapy.layers.inet6 as inet6
 import scapy.layers.http
-import argparse
 from collections import Counter
 import os.path
 
@@ -28,21 +27,24 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
     
 #TODO HTTP Request
-''' 
     if pkt.haslayer(scapy.layers.http.HTTPRequest): 
         req = pkt[scapy.layers.http.HTTPRequest]
-        ip_src = pkt[ipv4.IP].src
-        ip_dst = pkt[ipv4.IP].dst
+        ip_src = pkt[inet.IP].src
+        ip_dst = pkt[inet.IP].dst
         url = (req.Host+req.Path).decode()
         method = req.Method
         version = req.Version
         key = tuple(sorted([ip_src, ip_dst])) #bundles ip src and dst together
         packet_count.update(key) #updates packet count
-        print(f"PKT: {num} | IP_SRC: {pkt[ipv4.IP].src} | IP_DST: {pkt[ipv4.IP].dst}",
+        print(f"PKT: {int(sum(packet_count.values()) /2):6} | IP_SRC: {ip_src} | IP_DST: {ip_dst}",
         end=" | ")
-        print(f"VERSION: {version} | METHOD: {method} URL: |{url}")
+        print(f"VERSION: {version} | METHOD: {method} | URL: {url}")
         packet_count.update([key])
-'''
+#TODO HTTP Response
+#TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
+#TODO SSH
+#TODO TELNET
+#TODO MANY MANY OTHER PROTOCOLS
 
 
         
