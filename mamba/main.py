@@ -13,9 +13,9 @@ import os.path
 
 def proc_pkt(pkt): #handles packets depending on protocol
     if layer2.ARP in pkt:
-        ether_src = pkt[layer2.Ether].src #
-        ether_dst = pkt[layer2.Ether].dst # 
-        arp = pkt[layer2.ARP] # 
+        ether_src = pkt[layer2.Ether].src 
+        ether_dst = pkt[layer2.Ether].dst  
+        arp = pkt[layer2.ARP] 
 
         key = tuple(sorted([ether_src, ether_dst])) #bundles ether src and dst together
          
@@ -58,34 +58,46 @@ if __name__ == "__main__":
         interface = s.conf.iface
 
 
-    if colour: 
+    if colour: #TODO colour will be last thing to worry about
         try: 
-            proto_col = open("../colour.json", "r")
+            proto_colour = open("../colour.json", "r")
         except:
             m.warn("user defined colour rules could not be opened using default scheme",colour)
 
-    if write_pcap:
-        try:
-            f = open(write_pcap,"x") # try to create new file that doesn't exist 
-        except OSError as e_file_create: #if failed to create new file
-            if e.errno == errno.EEXIST: #if file already exists
-                try: 
-                    pass
-                except OSError as e_file_write:
-                    pass
-            else: #some other error
-                m.err(f"could not write '{write_pcap}' due to '{e_file_create.strerror.lower()}'",colour)
-                exit(e_file_create.errno)
+
+    if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
+        if os.path.exists(write_pcap) and  \
+        (not m.warn_confirm(f"file '{write_pcap}' exists, will be overwritten",colour)): #in case user accidently overwrites file
+            m.info("understood, exiting...",colour)
+            exit(0)
+        else: #try to write capture
+            try: 
+                f = open(write_pcap,"w") #tests to see if pcap can be written
+            except OSError as e:
+                m.err(f"could not write '{write_pcap}' due to '{e.strerror.lower()}'",colour)
+                exit(e.errno) # no point doing anything else if the user can't write a 'pcap' like they wanted
+            else:
+                f.close() # close file, so nothing messes up
+
+    if read_pcap:
+        try: 
+            f = open(read_pcap, "r")
+        except OSError as e:
+            m.err(f"could not read '{read_pcap}' due to '{e.strerror.lower()}'",colour)
         else:
             f.close()
 
-    packet_count = Counter()
+    packet_count = Counter() # count the number of packets captured
+
     try: 
-        capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count) #sends packets to callback function 'proc_pkt' to be processed
-        if args.write:
-            s.wrpcap(args.write,capture)
-    except (PermissionError, OSError) as e:
+        if read_pcap:
+            capture = s.sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count)
+        else:
+            capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
+    except OSError as e:
        m.err(f"could not sniff on {interface} due to '{e.strerror.lower()}'",colour)
        exit(e.errno)
-    finally:
-        pass
+    else:
+        if write_pcap: 
+            s.wrpcap(write_pcap,capture)
+
