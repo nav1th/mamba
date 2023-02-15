@@ -51,7 +51,6 @@ if __name__ == "__main__":
 
     filter = args.filter # BPF option, filters packets according to user pref
     colour = args.colourless # Determines if output is coloured, (stored as False when selected)
-    proto_colour = False
     write_pcap = args.write
     read_pcap = args.read
     interface = args.interface
@@ -60,12 +59,16 @@ if __name__ == "__main__":
         interface = s.conf.iface
 
 
+    proto_colour = False
 
     if colour: #TODO colour will be last thing to worry about
         try: 
-            proto_colour = open("../colour.json", "r")
+            colour_file = open("../colour.json", "r")
+            # proto_colour = magic json colours
         except:
             m.warn("user defined colour rules could not be opened using default scheme",colour)
+        else:
+            colour_file.close()
 
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
