@@ -1,0 +1,11 @@
+Specs of primary PC developing Mamba (Should be fine on any linux distro with Scapy installed):
+    OS: Artix Linux
+    Kernel: x86_64 Linux 6.1.8-artix1-1
+    Resolution: 1920x1080
+    WM: i3
+    GTK Theme: Adwaita [GTK3]
+    Terminal: kitty 0.27.0
+    Disk: 65G / 185G (37%)
+    CPU: Intel Core i7-10750H @ 12x 5GHz [41.0°C]
+    GPU: NVIDIA GeForce RTX 2060
+    RAM: 2622MiB / 15837MiB

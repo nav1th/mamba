@@ -5,9 +5,9 @@ def grab_args():
                         description = "CLI packet sniffer written in python")
     parser.add_argument("-i","--interface",required=False,type=str,default=False,
                         help="Select network interface to listen on")
-    parser.add_argument("-r","--readpcap",required=False, 
+    parser.add_argument("-r","--read",required=False,default=False,
                         help="Select '.pcap' file to read packets from")
-    parser.add_argument("-w","--write",required=False,
+    parser.add_argument("-w","--write",required=False,default=False,
                         help="Writes packet capture to file")
     parser.add_argument("-n","--non_promiscous",required=False, action="store_false",
                         help="Listen in non-promiscous mode, e.g only get packets addressed to your network interface")
