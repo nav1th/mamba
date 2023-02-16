@@ -34,7 +34,7 @@ def warn_confirmed(content: str, colour: bool) -> bool:
         return True
     return False
 
-def cprint(content: str, fg="", bg="",): #TODO coloured output for protos
+def cprint(content: str, fg=None, bg=None,): #TODO coloured output for protos
     match fg:
         case "YELLOW":
             print(Fore.YELLOW,end="")
@@ -48,8 +48,6 @@ def cprint(content: str, fg="", bg="",): #TODO coloured output for protos
             print(Fore.RED,end="")
         case "MAGENTA":
             print(Fore.MAGENTA,end="")
-        case _:
-            print(Fore.WHITE,end="")
     match bg:
         case "YELLOW":
             print(Fore.YELLOW,end="")
@@ -63,7 +61,5 @@ def cprint(content: str, fg="", bg="",): #TODO coloured output for protos
             print(Fore.RED,end="")
         case "MAGENTA":
             print(Fore.MAGENTA,end="")
-        case _:
-            print(Fore.BLACK,end="")
     print(f"{Style.BRIGHT}{content}{Style.RESET_ALL}")
     pass
