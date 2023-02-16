@@ -2,7 +2,6 @@ from colorama import Style, Fore
 import sys
 import json
 
-
 def err(content: str, colour: bool):
     if colour:
         sys.stderr.writelines(Fore.RED + Style.BRIGHT + "[!]" 
@@ -23,7 +22,7 @@ def warn(content: str, colour: bool):
     else:
         sys.stderr.writelines(f"warning: {content}\n")
 
-def warn_confirm(content: str, colour: bool) -> bool:
+def warn_confirmed(content: str, colour: bool) -> bool:
     if colour:
         print(f"{Fore.YELLOW}{Style.BRIGHT}[?] {Style.RESET_ALL}{content}", end=" ")
         user_input = input(f"are you sure? [{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}N{Style.RESET_ALL}]: ")
@@ -35,15 +34,7 @@ def warn_confirm(content: str, colour: bool) -> bool:
         return True
     return False
 
-
-
-        
-    
-    
-def cprint(content: str, colour: bool, fg="", bg="",): #TODO coloured output for protos
-    if not colour: #regular print if no colours
-        print(content)
-        return
+def cprint(content: str, fg="", bg="",): #TODO coloured output for protos
     match fg:
         case "YELLOW":
             print(Fore.YELLOW,end="")
@@ -53,8 +44,26 @@ def cprint(content: str, colour: bool, fg="", bg="",): #TODO coloured output for
             print(Fore.GREEN,end="")
         case "CYAN":
             print(Fore.CYAN,end="")
+        case "RED":
+            print(Fore.RED,end="")
+        case "MAGENTA":
+            print(Fore.MAGENTA,end="")
+        case _:
+            print(Fore.WHITE,end="")
+    match bg:
         case "YELLOW":
             print(Fore.YELLOW,end="")
-        case "YELLOW":
-            print(Fore.YELLOW,end="")
+        case "BLUE":
+            print(Fore.BLUE,end="")
+        case "GREEN":
+            print(Fore.GREEN,end="")
+        case "CYAN":
+            print(Fore.CYAN,end="")
+        case "RED":
+            print(Fore.RED,end="")
+        case "MAGENTA":
+            print(Fore.MAGENTA,end="")
+        case _:
+            print(Fore.BLACK,end="")
+    print(f"{Style.BRIGHT}{content}{Style.RESET_ALL}")
     pass

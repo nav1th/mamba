@@ -16,6 +16,7 @@ def grab_args():
     parser.add_argument("-c","--count",required=False,type=int,default=0)
     parser.add_argument("-v","--verbose", required=False, action="store_true")
     parser.add_argument("-cL","--colourless",required=False,action="store_false")
+    parser.add_argument("--no_confirm",required=False,action="store_true")
     args = parser.parse_args()
     if args.interface and args.read:
         m.err("can't read from 'pcap' and listen on interface at the same time",args.colourless)
