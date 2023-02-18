@@ -1,4 +1,4 @@
-from colorama import Style, Fore 
+from colorama import Back, Style, Fore 
 import sys
 import json
 
@@ -34,32 +34,3 @@ def warn_confirmed(content: str, colour: bool) -> bool:
         return True
     return False
 
-def cprint(content: str, fg=None, bg=None,): #TODO coloured output for protos
-    match fg:
-        case "YELLOW":
-            print(Fore.YELLOW,end="")
-        case "BLUE":
-            print(Fore.BLUE,end="")
-        case "GREEN":
-            print(Fore.GREEN,end="")
-        case "CYAN":
-            print(Fore.CYAN,end="")
-        case "RED":
-            print(Fore.RED,end="")
-        case "MAGENTA":
-            print(Fore.MAGENTA,end="")
-    match bg:
-        case "YELLOW":
-            print(Fore.YELLOW,end="")
-        case "BLUE":
-            print(Fore.BLUE,end="")
-        case "GREEN":
-            print(Fore.GREEN,end="")
-        case "CYAN":
-            print(Fore.CYAN,end="")
-        case "RED":
-            print(Fore.RED,end="")
-        case "MAGENTA":
-            print(Fore.MAGENTA,end="")
-    print(f"{Style.BRIGHT}{content}{Style.RESET_ALL}")
-    pass
