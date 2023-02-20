@@ -7,12 +7,14 @@ import scapy.layers.l2 as layer2
 import scapy.layers.inet as inet
 import scapy.layers.inet6 as inet6
 import scapy.layers.http
+import json
 
 from collections import Counter
 import os.path
 
-def check_colour_file(): #TODO check if correct colours are in colour file
-    pass
+def check_colour_file(json): #TODO check if correct colours are in colour file
+    for i in ['PROTOCOLS']:
+        print(i)
 
 
 
@@ -26,7 +28,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         packet_count.update(key) #updates packet count
         num_of_pkts = int(sum(packet_count.values()) / 2)
         if colour:
-            if colour_file:
+            if colour_json:
                 ARP_fg = "json magic fg"
                 ARP_bg = "json magic bg"
             else:  #default colours
@@ -87,16 +89,22 @@ if __name__ == "__main__":
         interface = s.conf.iface
 
 
-    colour_file = False
+    colour_json = False
 
     if colour: #TODO colour will be last thing to worry about
-        try: 
-            colour_file = open("../colour.json", "r")
-            # proto_colour = magic json colours
-        except:
-            m.warn("user defined colour rules could not be opened. using default scheme",colour)
-        else:
-            colour_file.close()
+       #try: 
+           f = open("colour.json")
+           colour_json = json.load(f)
+           check_colour_file(colour_json)
+
+
+
+       #    # proto_colour = magic json colours
+       #except:
+       #    m.warn("user defined colour rules could not be opened. using default scheme",colour)
+       #else:
+       #    colour_json.close()
+       #    exit()
 
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
