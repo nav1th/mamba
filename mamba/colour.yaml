@@ -17,6 +17,6 @@ colours:
   telnet:
     - 'YELLOW'
     - null
-  https:
+  https: 
     - 'GREEN'
     - null
