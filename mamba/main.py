@@ -1,13 +1,18 @@
 #!/usr/bin/python3.10
 import msg as m # custom messages
 import args # arguments in program
+from colorama import Fore, Back, Style
 import scapy.all as s
 import scapy.layers.l2 as layer2
 import scapy.layers.inet as inet
 import scapy.layers.inet6 as inet6
 import scapy.layers.http
+
 from collections import Counter
 import os.path
+
+def check_colour_file(): #TODO check if correct colours are in colour file
+    pass
 
 
 
@@ -22,20 +27,19 @@ def proc_pkt(pkt): #handles packets depending on protocol
         num_of_pkts = int(sum(packet_count.values()) / 2)
         if colour:
             if colour_file:
-                ARP_col = "json magic"
-            else: 
-                ARP_col = "YELLOW"
+                ARP_fg = "json magic fg"
+                ARP_bg = "json magic bg"
+            else:  #default colours
+                ARP_fg = Fore.YELLOW
+                ARP_bg = None
+            print(f"{ARP_fg}{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
+            if arp.op == 1:  #ARP who-has da MAC
+                print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
+            elif arp.op == 2: #ARP I'm your man here's your MAC
+                print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
 
-            m.cprint(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",
-            colour,ARP_col)
-
-            if arp.op == 1:  #ARP who has da MAC?
-                m.cprint(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}",colour,ARP_col)
-            elif arp.op == 2: #ARP im your man here's your MAC
-                m.cprint(f"ARP: {arp.hwsrc} is at {arp.psrc}",colour,ARP_col)
         else:
-            print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",
-            end=" | ")
+            print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP I'm your man here's your MAC
@@ -46,6 +50,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
         req = pkt[scapy.layers.http.HTTPRequest]
         ip_src = pkt[inet.IP].src
         ip_dst = pkt[inet.IP].dst
+        sport = pkt[inet.TCP].sport
+        dport = pkt[inet.TCP].dport
+        print("########################")
+        print(sport)
+        print("########################")
+
         url = (req.Host+req.Path).decode()
         method = req.Method.decode()
         version = req.Http_Version.decode()
@@ -111,7 +121,8 @@ if __name__ == "__main__":
 
     if read_pcap:
         try: 
-            capture = s.sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count)
+            capture = s.sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count) 
+            #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
         else:
@@ -120,6 +131,7 @@ if __name__ == "__main__":
     else: #must be interface being used then
         try: 
             capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
+            #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to sniff on {interface} due to '{e.strerror.lower()}'",colour)
            exit(e.errno)
