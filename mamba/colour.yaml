@@ -1,0 +1,22 @@
+---
+# colours available : YELLOW, RED, BLUE, CYAN, MAGENTA, GREEN, WHITE, BLACK
+# first sequence is foreground colour and second suquence is background colour
+colours:
+  arp:
+    - 'YELLOW'
+    - null
+  tcp:
+    - 'MAGENTA'
+    - null
+  ssh:
+    - 'YELLOW'
+    - null
+  http:
+    - 'YELLOW'
+    - null
+  telnet:
+    - 'YELLOW'
+    - null
+  https: 
+    - 'GREEN'
+    - null
