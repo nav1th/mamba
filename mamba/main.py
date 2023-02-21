@@ -25,7 +25,7 @@ def good_colour_file(json) -> bool: #TODO check if correct colours are in colour
 
 
 def proc_pkt(pkt): #handles packets depending on protocol
-    if layer2.ARP in pkt:
+    if layer2.ARP in pkt: #ARP 
         ether_src = pkt[layer2.Ether].src 
         ether_dst = pkt[layer2.Ether].dst  
         arp = pkt[layer2.ARP] 
@@ -41,17 +41,22 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 ARP_fg = Fore.YELLOW
                 ARP_bg = None
             print(f"{ARP_fg}{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
-            if arp.op == 1:  #ARP who-has da MAC
+            if arp.op == 1:  #ARP who-has da MAC for this IP
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
-            elif arp.op == 2: #ARP I'm your man here's your MAC
-                print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
-
+            elif arp.op == 2: #ARP here's your MAC
+                print(f"ARP: {arp.hwsrc} is at {arp.psrc}{Style.RESET_ALL}")
         else:
             print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP I'm your man here's your MAC
                 print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
+    if layer2.Neighbor in pkt:
+        ether_src = pkt[layer2.Ether].src 
+        ether_dst = pkt[layer2.Ether].dst  
+        neighbour = pkt[layer2.Neighbor]
+        
+        pass
     
 #TODO HTTP Request
     if pkt.haslayer(scapy.layers.http.HTTPRequest): 
