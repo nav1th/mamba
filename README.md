@@ -1,1 +1,1 @@
-just an ez packet sniffer written in python
+cli packet sniffer written in Python using the Scapy framework
