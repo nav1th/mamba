@@ -1,28 +1,40 @@
 {
-    "PROTO": {
-        "ARP": {
-            "FG": "YELLOW",
-            "BG": null
-        },
-        "TCP": {
-            "FG": "CYAN",
-            "BG" : null
-        },
-        "HTTP": {
-            "FG": "MAGENTA",
-            "BG" : null
-        },
-        "HTTPS": {
-            "FG": "GREEN",
-            "BG" : null
-        },
-        "TELNET": {
-            "FG": "RED",
-            "BG" : null
-        },
-        "SSH": {
-            "FG": "BLUE",
-            "BG" : null
-        },
+  "protocols" :[
+    {
+      "NAME": "ARP",
+      "FG": "MAGENTA",
+      "BG": null
+    },
+    {
+      "NAME": "HTTP",
+      "FG": "YELLOW",
+      "BG": null
+    },
+    {
+      "NAME": "HTTPS",
+      "FG": "GREEN",
+      "BG": null
+    },
+    {
+      "NAME": "TCP",
+      "FG": "BLUE",
+      "BG": null
+    },
+    {
+      "NAME": "TELNET",
+      "FG": "RED",
+      "BG": null
+    },
+    {
+      "NAME": "SSH",
+      "FG": "CYAN",
+      "BG": null
+    },
+    {
+      "NAME": "FTP",
+      "FG": "YELLOW",
+      "BG": null
     }
+
+  ]
 }
