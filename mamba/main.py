@@ -12,9 +12,15 @@ import json
 from collections import Counter
 import os.path
 
-def check_colour_file(json): #TODO check if correct colours are in colour file
-    for i in ['PROTOCOLS']:
-        print(i)
+
+def good_colour_file(json) -> bool: #TODO check if correct colours are in colour file
+    acceptable_colours = ["YELLOW", "RED", "BLUE", "CYAN", "MAGENTA", "GREEN", "WHITE", "BLACK"]
+    for i in json['protocols']:
+        if i['FG'] not in acceptable_colours:
+            return False
+        if i['BG'] != None and i['BG'] not in acceptable_colours:
+            return False
+    return True 
 
 
 
@@ -54,16 +60,13 @@ def proc_pkt(pkt): #handles packets depending on protocol
         ip_dst = pkt[inet.IP].dst
         sport = pkt[inet.TCP].sport
         dport = pkt[inet.TCP].dport
-        print("########################")
-        print(sport)
-        print("########################")
 
         url = (req.Host+req.Path).decode()
         method = req.Method.decode()
         version = req.Http_Version.decode()
         key = tuple(sorted([ip_src, ip_dst])) #bundles ip src and dst together
         packet_count.update(key) #updates packet count
-        print(f"{int(sum(packet_count.values()) /2):6} | {ip_src} ==> {ip_dst}",
+        print(f"{int(sum(packet_count.values()) /2):6} | {ip_src}:{sport} ==> {ip_dst}:{dport}",
         end="        | ")
         print(f"HTTP_VERSION: {version} | METHOD: {method} | URL: {url}")
         packet_count.update([key])
@@ -71,7 +74,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
 #TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
 #TODO SSH
 #TODO TELNET
-#TODO MANY MANY OTHER PROTOCOLS
+#TODO FTP
+#TODO OTHER PROTOCOLS ALONG DE WAY
 
 
         
@@ -92,19 +96,17 @@ if __name__ == "__main__":
     colour_json = False
 
     if colour: #TODO colour will be last thing to worry about
-       #try: 
+       try: 
            f = open("colour.json")
            colour_json = json.load(f)
-           check_colour_file(colour_json)
+           good_colour_file(colour_json)
 
-
-
-       #    # proto_colour = magic json colours
-       #except:
-       #    m.warn("user defined colour rules could not be opened. using default scheme",colour)
-       #else:
-       #    colour_json.close()
-       #    exit()
+           # proto_colour = magic json colours
+       except:
+           m.warn("user defined colour rules could not be opened. using default scheme",colour)
+       else:
+           colour_json.close()
+           exit()
 
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
