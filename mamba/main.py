@@ -105,8 +105,7 @@ if __name__ == "__main__":
            m.warn("user defined colour rules could not be opened. using default scheme",colour)
            colour_json = False # colour.json file, if false it either can't be read or doesn't exist
        else:
-           colour_json.close()
-           exit()
+           f.close()
 
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
