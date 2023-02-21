@@ -81,7 +81,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
-
+    
+    ##args from cli
     filter = args.filter # BPF option, filters packets according to user pref
     colour = args.colourless # determines if output is coloured, (stored as False when selected)
     write_pcap = args.write #if user wishes to write their packet capture to a file
@@ -91,19 +92,18 @@ if __name__ == "__main__":
     no_confirm = args.no_confirm
     if not interface:
         interface = s.conf.iface
+    ##
 
-
-    colour_json = False
 
     if colour: #TODO colour will be last thing to worry about
        try: 
            f = open("colour.json")
            colour_json = json.load(f)
            good_colour_file(colour_json)
-
            # proto_colour = magic json colours
        except:
            m.warn("user defined colour rules could not be opened. using default scheme",colour)
+           colour_json = False # colour.json file, if false it either can't be read or doesn't exist
        else:
            colour_json.close()
            exit()
