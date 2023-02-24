@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from scapy.main import load_layer
 import msg as m # custom messages
 import args # arguments in program
 from colorama import Fore, Back, Style
@@ -9,6 +10,7 @@ import scapy.layers.inet6 as inet6
 import scapy.layers.http
 import json
 
+#load_layer("tls")
 from collections import Counter
 import os.path
 
@@ -34,6 +36,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ip_dst = None
     ipv6_src = None
     ipv6_dst = None
+    num_of_pkts = 0
   
 
 
@@ -51,6 +54,14 @@ def proc_pkt(pkt): #handles packets depending on protocol
         ipv6_src = pkt[inet6.IPv6].src
         ipv6_dst = pkt[inet6.IPv6].dst
         insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv6)
+        if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
+            rs = pkt[inet6.ICMPv6ND_RS]
+            print(f"{num_of_pkts} | Router solication message: {ipv6_src} ==> {ipv6_dst}", end=" | ")
+        if inet6.ICMPv6ND_NA in pkt: #Neighbour association
+            pass
+        if inet6.ICMPv6ND_RA in pkt:
+            pass
+#       if 
 
     if layer2.ARP in pkt: #ARP       
         arp = pkt[layer2.ARP] 
@@ -61,21 +72,18 @@ def proc_pkt(pkt): #handles packets depending on protocol
             else:  #default colours
                 ARP_fg = Fore.YELLOW
                 ARP_bg = None
-            print(f"{ARP_fg}{packet_count:6} | {ether_src} ==> {ether_dst}",end=" | ")
+            print(f"{ARP_fg}{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC for this IP
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP here's your MAC
                 print(f"ARP: {arp.hwsrc} is at {arp.psrc}{Style.RESET_ALL}")
         else:
-            print(f"{packet_count:6} | {ether_src} ==> {ether_dst}",end=" | ")
+            print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP I'm your man here's your MAC
                 print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
                 
-    if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
-        rs = pkt[inet6.ICMPv6ND_RS]
-        print(f"{packet_count} | Router solication message: {ipv6_src} ==> {ipv6_dst}", end=" | ")
     if scapy.layers.http.HTTPRequest in pkt: # HTTP Request
         req = pkt[scapy.layers.http.HTTPRequest]
         sport = pkt[inet.TCP].sport
@@ -84,13 +92,16 @@ def proc_pkt(pkt): #handles packets depending on protocol
         url = (req.Host+req.Path).decode()
         method = req.Method.decode()
         version = req.Http_Version.decode()
-        key = tuple(sorted([ip_src, ip_dst])) #bundles ip src and dst together
-        packet_count.update(key) #updates packet count
-        print(f"{int(sum(packet_count.values()) /2):6} | {ip_src}:{sport} ==> {ip_dst}:{dport}",
+        print(f"{num_of_pkts:6i} | {ip_src}:{sport} ==> {ip_dst}:{dport}",
         end="        | ")
         print(f"HTTP_VERSION: {version} | METHOD: {method} | URL: {url}")
-        if show_raw and scapy.has_layer(s.Raw):
+        if s.Raw in pkt and show_raw:
             print(f"\tRAW Data: {pkt[s.Raw].load}")
+    print(pkt.summary())
+
+
+
+
             
         
         
@@ -101,7 +112,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
 #TODO FTP
 #TODO DNS
 #TODO OTHER PROTOCOLS ALONG DE WAY
-    packet_count+=1
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
