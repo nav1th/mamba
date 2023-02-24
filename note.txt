@@ -8,3 +8,7 @@ Specs of primary PC developing Mamba (Should be fine on any linux distro with Sc
     CPU: Intel Core i7-10750H @ 12x 5GHz [41.0°C]
     GPU: NVIDIA GeForce RTX 2060
     RAM: 2622MiB / 15837MiB
+
+External libraries:
+    colorama
+    scapy
