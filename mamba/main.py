@@ -1,4 +1,4 @@
-#!/usr/bin/python3.10
+#!/usr/bin/env python3
 import msg as m # custom messages
 import args # arguments in program
 from colorama import Fore, Back, Style
@@ -75,7 +75,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 
     if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
         rs = pkt[inet6.ICMPv6ND_RS]
-        print(f"{packet_count} | {ipv6_src} ==> {ipv6_dst}", end=" | ")
+        print(f"{packet_count} | Router solication message: {ipv6_src} ==> {ipv6_dst}", end=" | ")
     if scapy.layers.http.HTTPRequest in pkt: # HTTP Request
         req = pkt[scapy.layers.http.HTTPRequest]
         sport = pkt[inet.TCP].sport
@@ -90,13 +90,16 @@ def proc_pkt(pkt): #handles packets depending on protocol
         end="        | ")
         print(f"HTTP_VERSION: {version} | METHOD: {method} | URL: {url}")
         if show_raw and scapy.has_layer(s.Raw):
-            print(f"\tRAW Data: {pkt[s.Raw]}")
+            print(f"\tRAW Data: {pkt[s.Raw].load}")
+            
+        
         
 #TODO HTTP Response
 #TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
 #TODO SSH
 #TODO TELNET
 #TODO FTP
+#TODO DNS
 #TODO OTHER PROTOCOLS ALONG DE WAY
     packet_count+=1
         
