@@ -1,0 +1,36 @@
+The literature review chapter is carried out in a very detailed manner. “Table 1: Search term results”, “Table 2: Current packet sniffers in use” and “Table 3: Creation of packet sniffers by researchers” are very well presented. The literature review section is lacking discussion of the broader theoretical and conceptual frameworks that underpin the research questions/ objectives. To improve the literature review, you should consider integrating relevant theoretical and conceptual frameworks into the discussion, which can help to contextualize and explain the research question and objectives.
+
+Appropriateness and Clarity of Design and Methods: Design and Methods (30%):
+
+Well done for the Table 6: Agile Tasks in Project and the requirements.  Figure 5: System Architecture Design of the proposed system seems a good approach. 
+
+The methodology however lacks a clear justification for the design and methods selected for the study. This includes explaining why the chosen design and methods are appropriate for addressing the research question and how they are relevant to the existing literature. To improve this, you can include a brief review of the literature to show how the design and methods fit.
+
+Some suggestions for bringing more improvement towards the objective of the project are as under, 
+
+Support Multiple Protocols: Different network protocols have different packet structures and fields, so it's important to support as many protocols as possible to be able to handle diverse network traffic. Make sure that your packet sniffer can decode and analyze a wide range of protocols, such as TCP, UDP, HTTP, DNS, FTP, etc.
+
+Enhance the User Interface: Make your packet sniffer easy to use by providing a user-friendly interface with clear and concise information about each captured packet. Use graphs, tables, or charts to visualize the captured data, and provide the user with filtering and sorting options to help them focus on the packets they are interested in.
+
+Optimize for Performance: In packet sniffing, the ability to process large amounts of network traffic quickly is critical. Therefore, it's important to optimize your packet sniffer's performance by minimizing the overhead of processing each packet, avoiding unnecessary memory allocations, and reducing the use of CPU and memory resources.
+
+Ensure Security: Packet sniffing can be a security risk, especially if the captured data contains sensitive information, such as passwords or other user data. Therefore, ensure that your packet sniffer is secure by implementing encryption and authentication mechanisms to protect the captured data.
+
+Document your code: Provide clear documentation to make it easier for other developers to understand and extend your code. Include detailed comments, documentation for any external libraries used, and clear examples of how to use your packet sniffer.
+
+Handle Errors Gracefully: Unexpected errors can occur while capturing and analyzing packets. Make sure that your packet sniffer can handle these errors gracefully by providing helpful error messages and avoiding crashes or data loss.
+
+
+A progress meeting was held on-site with the student on 13th February 2022. The following points were identified after a detailed discussion with the student. 
+
+Design and Architecture: Discussion on the overall design and architecture of the packet sniffer. The student is advised to consider the performance requirements and how to optimize the software to handle a high volume of network traffic.
+
+Supported Protocols: The student is advised to identify which network protocols the packet sniffer should support. Discuss the best ways to decode and analyze packets from different protocols, as well as any challenges associated with capturing data from some protocols.
+
+User Interface and Features: The students need to plan on what information should be displayed for each packet, how to organize the data, and any filtering and sorting options that should be available. Consider any other features that would make the tool more useful for users.
+
+Testing and Quality Assurance: The student needs to discuss the testing strategy for the packet sniffer. Consider how to test the tool with a variety of network scenarios and traffic types, as well as automated testing tools. Discuss ways to ensure the quality of the software and how to handle any errors or bugs that are discovered.
+
+Documentation and Collaboration: The student needs to discuss the best practices for documenting the code and collaborating with other developers. Consider how to ensure that the code is well-documented, including comments, examples, and external library documentation. Also, consider how to work together as a team, including communication and project management tools.
+
+Future Plans and Roadmap: The student should be open to consider any new features or improvements that could be made to the software, and how to prioritize these changes.
