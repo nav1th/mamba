@@ -34,7 +34,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ip_dst = None
     ipv6_src = None
     ipv6_dst = None
-    num_of_pkts = sum(packet_count)
+  
+
 
     if layer2.Ether in pkt:  ## grab ethernet info if any
         ether_src = pkt[layer2.Ether].src 
@@ -60,13 +61,13 @@ def proc_pkt(pkt): #handles packets depending on protocol
             else:  #default colours
                 ARP_fg = Fore.YELLOW
                 ARP_bg = None
-            print(f"{ARP_fg}{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
+            print(f"{ARP_fg}{packet_count:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC for this IP
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP here's your MAC
                 print(f"ARP: {arp.hwsrc} is at {arp.psrc}{Style.RESET_ALL}")
         else:
-            print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
+            print(f"{packet_count:6} | {ether_src} ==> {ether_dst}",end=" | ")
             if arp.op == 1:  #ARP who-has da MAC
                 print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP I'm your man here's your MAC
@@ -74,7 +75,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 
     if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
         rs = pkt[inet6.ICMPv6ND_RS]
-        print(f"{num_of_pkts} | {ipv6_src} ==> {ipv6_dst}", end=" | ")
+        print(f"{packet_count} | {ipv6_src} ==> {ipv6_dst}", end=" | ")
     if scapy.layers.http.HTTPRequest in pkt: # HTTP Request
         req = pkt[scapy.layers.http.HTTPRequest]
         sport = pkt[inet.TCP].sport
@@ -88,14 +89,16 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(f"{int(sum(packet_count.values()) /2):6} | {ip_src}:{sport} ==> {ip_dst}:{dport}",
         end="        | ")
         print(f"HTTP_VERSION: {version} | METHOD: {method} | URL: {url}")
-        packet_count.update([key])
+        if show_raw and scapy.has_layer(s.Raw):
+            print(f"\tRAW Data: {pkt[s.Raw]}")
+        
 #TODO HTTP Response
 #TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
 #TODO SSH
 #TODO TELNET
 #TODO FTP
 #TODO OTHER PROTOCOLS ALONG DE WAY
-    #packet_count.update([pkt])
+    packet_count+=1
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
@@ -108,6 +111,7 @@ if __name__ == "__main__":
     interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
     count = args.count
     no_confirm = args.no_confirm
+    show_raw = args.show_raw
     if not interface:
         interface = s.conf.iface
     ##
@@ -118,7 +122,6 @@ if __name__ == "__main__":
            f = open("colour.json")
            colour_json = json.load(f)
            good_colour_file(colour_json)
-           # proto_colour = magic json colours
        except:
            m.warn("user defined colour rules could not be opened. using default scheme",colour)
            colour_json = False # colour.json file, if false it either can't be read or doesn't exist
@@ -144,7 +147,7 @@ if __name__ == "__main__":
                 f.close() # close file, so nothing messes up
 
 
-    packet_count = Counter() # count the number of packets captured
+    packet_count = 1 #count the number of packets captured
     pairs_ipv4 = Counter() 
     pairs_ipv6 = Counter()
     pairs_ether = Counter()
