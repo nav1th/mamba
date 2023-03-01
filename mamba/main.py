@@ -10,7 +10,7 @@ import scapy.layers.inet6 as inet6
 import scapy.layers.http
 import json
 
-#load_layer("tls")
+load_layer("tls")
 from collections import Counter
 import os.path
 
@@ -36,8 +36,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ip_dst = None
     ipv6_src = None
     ipv6_dst = None
-    num_of_pkts = 0
-  
+    tcp_sport = pkt[inet.TCP].sport
+    tcp_dport = pkt[inet.TCP].dport
+    udp_sport = pkt[inet.UDP].sport
+    udp_dport = pkt[inet.UDP].dport
+    num_of_pkts: int = 0
 
 
     if layer2.Ether in pkt:  ## grab ethernet info if any
@@ -53,7 +56,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if inet6.IPv6 in pkt: # grab ipv6 info if any
         ipv6_src = pkt[inet6.IPv6].src
         ipv6_dst = pkt[inet6.IPv6].dst
-        insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv6)
+        insert_src_dst_pairs(ipv6_src,ipv6_dst,pairs_ipv6)
         if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
             rs = pkt[inet6.ICMPv6ND_RS]
             print(f"{num_of_pkts} | Router solication message: {ipv6_src} ==> {ipv6_dst}", end=" | ")
@@ -61,44 +64,108 @@ def proc_pkt(pkt): #handles packets depending on protocol
             pass
         if inet6.ICMPv6ND_RA in pkt:
             pass
-#       if 
 
+    if inet.TCP in pkt:
+        sport = pkt[inet.TCP].sport
+        dport = pkt[inet.TCP].dport
+        
     if layer2.ARP in pkt: #ARP       
         arp = pkt[layer2.ARP] 
+        ARP_fg = None
+        ARP_bg = None
         if colour:
             if colour_json:
                 ARP_fg = "json magic fg"
                 ARP_bg = "json magic bg"
             else:  #default colours
-                ARP_fg = Fore.YELLOW
-                ARP_bg = None
-            print(f"{ARP_fg}{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
+                ARP_fg = Fore.MAGENTA
+        if ARP_fg:
+            print(f"{ARP_fg}")
+        if ARP_bg:
+            print(f"{ARP_bg}")
+            
+            print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
             if arp.op == 1:  #ARP who-has da MAC for this IP
-                print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
+                print(f"{arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP here's your MAC
-                print(f"ARP: {arp.hwsrc} is at {arp.psrc}{Style.RESET_ALL}")
-        else:
-            print(f"{num_of_pkts:6} | {ether_src} ==> {ether_dst}",end=" | ")
-            if arp.op == 1:  #ARP who-has da MAC
-                print(f"ARP: {arp.psrc} is asking who has MAC for {arp.pdst}")
-            elif arp.op == 2: #ARP I'm your man here's your MAC
-                print(f"ARP: {arp.hwsrc} is at {arp.psrc}")
+                print(f"{arp.hwsrc} is at {arp.psrc}")
                 
-    if scapy.layers.http.HTTPRequest in pkt: # HTTP Request
-        req = pkt[scapy.layers.http.HTTPRequest]
-        sport = pkt[inet.TCP].sport
-        dport = pkt[inet.TCP].dport
+        if colour:
+            print(f"{Style.RESET_ALL}")
+        
 
-        url = (req.Host+req.Path).decode()
-        method = req.Method.decode()
-        version = req.Http_Version.decode()
-        print(f"{num_of_pkts:6i} | {ip_src}:{sport} ==> {ip_dst}:{dport}",
-        end="        | ")
-        print(f"HTTP_VERSION: {version} | METHOD: {method} | URL: {url}")
-        if s.Raw in pkt and show_raw:
-            print(f"\tRAW Data: {pkt[s.Raw].load}")
-    print(pkt.summary())
+    
+    if scapy.layers.http.HTTP in pkt: 
+        HTTP_fg = None
+        HTTP_bg = None
+        if colour:
+            if colour_json:
+                HTTP_fg = "json magic fg"
+                HTTP_bg = "json magic bg"
+            else:  #default colours
+                HTTP_fg = Fore.YELLOW
+                HTTP_bg = None
+                
+            if HTTP_fg: #Adds foreground colours if desired
+                print(f"{HTTP_fg}",end="") #adds colouring here
+            if HTTP_bg: #Adds background colours if desired
+                print(f"{HTTP_bg}",end="")   
 
+        if scapy.layers.http.HTTPRequest in pkt: # decode HTTP requests 
+            req = pkt[scapy.layers.http.HTTPRequest]
+            host = req.Host.decode()
+            path = req.Host.decode()
+            url = host+path# the path of website e.g. '/register/login'
+            method = req.Method.decode() #e.g method used in request e.g. 'GET' or 'POST'
+            version = req.Http_Version.decode() # http version of request 'HTTP/1.1'
+            print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}",
+            end=" | ")
+            print(f"VERSION: {version} | URL: {url} | METHOD: {method}")
+            if s.Raw in pkt and verbose:
+                print(f"\tRAW Data: {pkt[s.Raw].load}")
+            print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
+            
+        if scapy.layers.http.HTTPResponse in pkt:
+            res = pkt[scapy.layers.http.HTTPResponse]
+            status = res.Status_Code.decode()
+            reason = res.Reason_Phrase.decode()
+            version = res.Http_Version.decode()
+            status_code = f"{status}: '{reason}'" #Status code e.g '404: Not found'
+
+            print(f"HTTP | {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
+            end=" | ")
+            print(f"VERSION: {version} | STATUS: {status_code}")
+            if s.Raw in pkt and verbose:
+                print(f"\tRAW Data: {pkt[s.Raw].load}")
+        if scapy.layers.tls.record.TLS in pkt:
+            tls = pkt[scapy.layers.tls.record.TLS]
+            version = tls.version
+            
+            if tcp_sport == 443 or tcp_dport == 443: #Traffic is likely to be HTTPS
+                HTTPS_fg = None
+                HTTPS_bg = None
+                if colour: 
+                    if colour_json:
+                        HTTPS_fg = "json_magic"
+                        HTTPS_bg = "json_magic"
+                    else:
+                        HTTPS_fg = Fore.GREEN
+                        HTTPS_bg = None
+                if HTTPS_fg:
+                    print(f"{HTTPS_fg}")
+                if HTTPS_bg:
+                    print(f"{HTTPS_bg}")
+                print("HTTPS")
+                
+                if colour: 
+                    print(f"{Style.RESET_ALL}")
+                
+            elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
+                pass
+            
+
+                    
+ 
 
 
 
@@ -124,7 +191,7 @@ if __name__ == "__main__":
     interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
     count = args.count
     no_confirm = args.no_confirm
-    show_raw = args.show_raw
+    verbose = args.verbose 
     if not interface:
         interface = s.conf.iface
     ##
