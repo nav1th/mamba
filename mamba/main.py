@@ -4,10 +4,15 @@ import msg as m # custom messages
 import args # arguments in program
 from colorama import Fore, Back, Style
 import scapy.all as s
-import scapy.layers.l2 as layer2
-import scapy.layers.inet as inet
-import scapy.layers.inet6 as inet6
-import scapy.layers.http
+from scapy.layers.l2 import ARP, Ether
+from  scapy.layers.inet import IP, TCP, UDP
+from scapy.layers.inet6 import  \
+        IPv6, \
+        ICMPv6ND_NA as NDP_NA, \
+        ICMPv6ND_RA as NDP_RA, \
+        ICMPv6ND_NS as NDP_NS, \
+        ICMPv6ND_RS as NDP_RS
+from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRes
 import json
 
 load_layer("tls")
@@ -36,53 +41,57 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ip_dst = None
     ipv6_src = None
     ipv6_dst = None
-    tcp_sport = pkt[inet.TCP].sport
-    tcp_dport = pkt[inet.TCP].dport
-    udp_sport = pkt[inet.UDP].sport
-    udp_dport = pkt[inet.UDP].dport
+    tcp_sport = None
+    tcp_dport = None
+    udp_sport = None
+    udp_dport = None
     num_of_pkts: int = 0
 
-
-    if layer2.Ether in pkt:  ## grab ethernet info if any
-        ether_src = pkt[layer2.Ether].src 
-        ether_dst = pkt[layer2.Ether].dst  
+    if Ether in pkt:  ## grab ethernet info if any
+        ether_src = pkt[Ether].src 
+        ether_dst = pkt[Ether].dst  
         insert_src_dst_pairs(ether_src,ether_dst,pairs_ether)
         
-    if inet.IP in pkt: # grab ipv4 info if any
-        ip_src = pkt[inet.IP].src
-        ip_dst = pkt[inet.IP].dst
+    if IP in pkt: # grab ipv4 info if any
+        ip_src = pkt[IP].src
+        ip_dst = pkt[IP].dst
         insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv4)
        
-    if inet6.IPv6 in pkt: # grab ipv6 info if any
-        ipv6_src = pkt[inet6.IPv6].src
-        ipv6_dst = pkt[inet6.IPv6].dst
+    if IPv6 in pkt: # grab ipv6 info if any
+        ipv6_src = pkt[IPv6].src
+        ipv6_dst = pkt[IPv6].dst
         insert_src_dst_pairs(ipv6_src,ipv6_dst,pairs_ipv6)
-        if inet6.ICMPv6ND_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
-            rs = pkt[inet6.ICMPv6ND_RS]
-            print(f"{num_of_pkts} | Router solication message: {ipv6_src} ==> {ipv6_dst}", end=" | ")
-        if inet6.ICMPv6ND_NA in pkt: #Neighbour association
+        if NDP_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
+            print(f"{num_of_pkts} | Router solication message: {ipv6_src} ==> {ipv6_dst}")
+        if NDP_NA in pkt: #neighbour advertisement
             pass
-        if inet6.ICMPv6ND_RA in pkt:
+        if NDP_RA in pkt: #router advertisement 
+            pass
+        if NDP_NS in pkt: #neighbour solicitation
             pass
 
-    if inet.TCP in pkt:
-        sport = pkt[inet.TCP].sport
-        dport = pkt[inet.TCP].dport
+    if TCP in pkt:
+        tcp_sport = pkt[TCP].sport
+        tcp_dport = pkt[TCP].dport
+
+    if UDP in pkt:
+        udp_sport = pkt[UDP].sport
+        udp_dport = pkt[UDP].dport
         
-    if layer2.ARP in pkt: #ARP       
-        arp = pkt[layer2.ARP] 
-        ARP_fg = None
-        ARP_bg = None
+    if ARP in pkt: #ARP       
+        arp = pkt[ARP] 
+        arp_fg = None
+        arp_bg = None
         if colour:
             if colour_json:
-                ARP_fg = "json magic fg"
-                ARP_bg = "json magic bg"
+                arp_fg = "json magic fg"
+                arp_bg = "json magic bg"
             else:  #default colours
-                ARP_fg = Fore.MAGENTA
-        if ARP_fg:
-            print(f"{ARP_fg}")
-        if ARP_bg:
-            print(f"{ARP_bg}")
+                arp_fg = Fore.MAGENTA
+        if arp_fg:
+            print(f"{arp_fg}")
+        if arp_bg:
+            print(f"{arp_bg}")
             
             print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
             if arp.op == 1:  #ARP who-has da MAC for this IP
@@ -95,38 +104,38 @@ def proc_pkt(pkt): #handles packets depending on protocol
         
 
     
-    if scapy.layers.http.HTTP in pkt: 
-        HTTP_fg = None
-        HTTP_bg = None
+    if HTTP in pkt: 
+        http_fg = None
+        http_bg = None
         if colour:
             if colour_json:
-                HTTP_fg = "json magic fg"
-                HTTP_bg = "json magic bg"
+                http_fg = "json magic fg"
+                http_bg = "json magic bg"
             else:  #default colours
-                HTTP_fg = Fore.YELLOW
-                HTTP_bg = None
+                http_fg = Fore.YELLOW
+                http_bg = None
                 
-            if HTTP_fg: #Adds foreground colours if desired
-                print(f"{HTTP_fg}",end="") #adds colouring here
-            if HTTP_bg: #Adds background colours if desired
-                print(f"{HTTP_bg}",end="")   
+            if http_fg: #Adds foreground colours if desired
+                print(f"{http_fg}",end="") #adds colouring here
+            if http_bg: #Adds background colours if desired
+                print(f"{http_bg}",end="")   
 
-        if scapy.layers.http.HTTPRequest in pkt: # decode HTTP requests 
-            req = pkt[scapy.layers.http.HTTPRequest]
+        if HTTPReq in pkt: # decode HTTP requests 
+            req = pkt[HTTPReq]
             host = req.Host.decode()
             path = req.Host.decode()
-            url = host+path# the path of website e.g. '/register/login'
+            url = host+path# the location of website e.g. 'http://hello.com/register/login'
             method = req.Method.decode() #e.g method used in request e.g. 'GET' or 'POST'
             version = req.Http_Version.decode() # http version of request 'HTTP/1.1'
-            print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}",
+            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
             end=" | ")
             print(f"VERSION: {version} | URL: {url} | METHOD: {method}")
             if s.Raw in pkt and verbose:
                 print(f"\tRAW Data: {pkt[s.Raw].load}")
             print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
             
-        if scapy.layers.http.HTTPResponse in pkt:
-            res = pkt[scapy.layers.http.HTTPResponse]
+        if HTTPRes in pkt:
+            res = pkt[HTTPRes]
             status = res.Status_Code.decode()
             reason = res.Reason_Phrase.decode()
             version = res.Http_Version.decode()
@@ -137,6 +146,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"VERSION: {version} | STATUS: {status_code}")
             if s.Raw in pkt and verbose:
                 print(f"\tRAW Data: {pkt[s.Raw].load}")
+
         if scapy.layers.tls.record.TLS in pkt:
             tls = pkt[scapy.layers.tls.record.TLS]
             version = tls.version
@@ -152,9 +162,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
                         HTTPS_fg = Fore.GREEN
                         HTTPS_bg = None
                 if HTTPS_fg:
-                    print(f"{HTTPS_fg}")
+                    print(f"{HTTPS_fg}",end="")
                 if HTTPS_bg:
-                    print(f"{HTTPS_bg}")
+                    print(f"{HTTPS_bg}",end="")
                 print("HTTPS")
                 
                 if colour: 
