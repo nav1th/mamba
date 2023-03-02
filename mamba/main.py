@@ -3,7 +3,7 @@ from scapy.main import load_layer
 import msg as m # custom messages
 import args # arguments in program
 from colorama import Fore, Back, Style
-import scapy.all as s
+from scapy.all import sniff, Raw,wrpcap,conf
 from scapy.layers.l2 import ARP, Ether
 from  scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import  \
@@ -132,8 +132,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
             end=" | ")
             print(f"VERSION: {version} | URL: {url} | METHOD: {method}")
-            if s.Raw in pkt and verbose:
-                print(f"\tRAW Data: {pkt[s.Raw].load}")
+            if Raw in pkt and verbose:
+                print(f"\tRAW Data: {pkt[Raw].load}")
             print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
             
         if HTTPRes in pkt:
@@ -146,8 +146,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"HTTP | {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
             end=" | ")
             print(f"VERSION: {version} | STATUS: {status_code}")
-            if s.Raw in pkt and verbose:
-                print(f"\tRAW Data: {pkt[s.Raw].load}")
+            if Raw in pkt and verbose:
+                print(f"\tRAW Data: {pkt[Raw].load}")
 
         if TLS in pkt:
             tls = pkt[TLS]
@@ -176,6 +176,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 pass
         if DNS in pkt:
             dns = pkt[DNS].mysummary()
+        if TCP in pkt and Raw in pkt:
+            raw = pkt[Raw]
+            print(bytes(pkt))
         
 
             
@@ -209,7 +212,7 @@ if __name__ == "__main__":
     no_confirm = args.no_confirm
     verbose = args.verbose 
     if not interface:
-        interface = s.conf.iface
+        interface = conf.iface
     ##
 
 
@@ -250,21 +253,21 @@ if __name__ == "__main__":
 
     if read_pcap:
         try: 
-            capture = s.sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count) 
+            capture = sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count) 
             #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
         else:
             if write_pcap: 
-                s.wrpcap(write_pcap,capture)
+                wrpcap(write_pcap,capture)
     else: #must be interface being used then
         try: 
-            capture = s.sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
+            capture = sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
             #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to sniff on {interface} due to '{e.strerror.lower()}'",colour)
            exit(e.errno)
         else:
             if write_pcap: 
-                s.wrpcap(write_pcap,capture)
+                wrpcap(write_pcap,capture)
 
