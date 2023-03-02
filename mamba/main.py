@@ -13,6 +13,8 @@ from scapy.layers.inet6 import  \
         ICMPv6ND_NS as NDP_NS, \
         ICMPv6ND_RS as NDP_RS
 from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRes
+from scapy.layers.tls.record import TLS
+from scapy.layers.dns import DNS
 import json
 
 load_layer("tls")
@@ -94,7 +96,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"{arp_bg}")
             
             print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
-            if arp.op == 1:  #ARP who-has da MAC for this IP
+            if arp.op == 1:  #ARP who has the MAC for this IP
                 print(f"{arp.psrc} is asking who has MAC for {arp.pdst}")
             elif arp.op == 2: #ARP here's your MAC
                 print(f"{arp.hwsrc} is at {arp.psrc}")
@@ -147,8 +149,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
             if s.Raw in pkt and verbose:
                 print(f"\tRAW Data: {pkt[s.Raw].load}")
 
-        if scapy.layers.tls.record.TLS in pkt:
-            tls = pkt[scapy.layers.tls.record.TLS]
+        if TLS in pkt:
+            tls = pkt[TLS]
             version = tls.version
             
             if tcp_sport == 443 or tcp_dport == 443: #Traffic is likely to be HTTPS
@@ -172,6 +174,10 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 
             elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
                 pass
+        if DNS in pkt:
+            dns = pkt[DNS].mysummary()
+        
+
             
 
                     
