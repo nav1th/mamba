@@ -149,46 +149,37 @@ def proc_pkt(pkt): #handles packets depending on protocol
             if Raw in pkt and verbose:
                 print(f"\tRAW Data: {pkt[Raw].load}")
 
-        if TLS in pkt:
-            tls = pkt[TLS]
-            version = tls.version
-            print("HTTPS")   
-            if tcp_sport == 443 or tcp_dport == 443: #Traffic is likely to be HTTPS
-                HTTPS_fg = None
-                HTTPS_bg = None
-                if colour: 
-                    if colour_json:
-                        HTTPS_fg = "json_magic"
-                        HTTPS_bg = "json_magic"
-                    else:
-                        HTTPS_fg = Fore.GREEN
-                        HTTPS_bg = None
-                if HTTPS_fg:
-                    print(f"{HTTPS_fg}",end="")
-                if HTTPS_bg:
-                    print(f"{HTTPS_bg}",end="")
+    if TLS in pkt:
+        tls = pkt[TLS]
+        version = tls.version
+        if colour: 
+            if colour_json:
+                TLS_fg = "json_magic"
+                TLS_bg = "json_magic"
+            else:
+                TLS_fg = Fore.GREEN
+                TLS_bg = None
+            if TLS_fg:
+                print(f"{TLS_fg}",end="")
+            if TLS_bg:
+                print(f"{TLS_bg}",end="")
             
+            #print("HTTPS")
              
-                if colour: 
-                    print(f"{Style.RESET_ALL}",end="")
+            if colour: 
+                print(f"{Style.RESET_ALL}",end="")
                 
-            elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
-                pass
-        if DNS in pkt:
-            dns = pkt[DNS].mysummary()
-        if TCP in pkt and Raw in pkt:
-            raw = pkt[Raw]
+        elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
+            pass
+    if DNS in pkt:
+        dns = pkt[DNS]
+        #print(f"DNS | {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
+        
+    if TCP in pkt and Raw in pkt:
+        raw = pkt[Raw]
             #print(bytes(pkt))
         
 
-            
-
-                    
- 
-
-
-
-            
         
         
 #TODO HTTP Response
