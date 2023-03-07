@@ -91,18 +91,18 @@ def proc_pkt(pkt): #handles packets depending on protocol
             else:  #default colours
                 arp_fg = Fore.MAGENTA
         if arp_fg:
-            print(f"{arp_fg}")
+            print(f"{arp_fg}",end="")
         if arp_bg:
-            print(f"{arp_bg}")
+            print(f"{arp_bg}",end="")
             
-            print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
-            if arp.op == 1:  #ARP who has the MAC for this IP
-                print(f"{arp.psrc} is asking who has MAC for {arp.pdst}")
-            elif arp.op == 2: #ARP here's your MAC
-                print(f"{arp.hwsrc} is at {arp.psrc}")
+        print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
+        if arp.op == 1:  #ARP who has the MAC for this IP
+            print(f"{arp.psrc} is asking who has MAC for {arp.pdst}")
+        elif arp.op == 2: #ARP here's your MAC
+            print(f"{arp.hwsrc} is at {arp.psrc}")
                 
         if colour:
-            print(f"{Style.RESET_ALL}")
+            print(f"{Style.RESET_ALL}",end="")
         
 
     
@@ -152,7 +152,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         if TLS in pkt:
             tls = pkt[TLS]
             version = tls.version
-            
+            print("HTTPS")   
             if tcp_sport == 443 or tcp_dport == 443: #Traffic is likely to be HTTPS
                 HTTPS_fg = None
                 HTTPS_bg = None
@@ -167,10 +167,10 @@ def proc_pkt(pkt): #handles packets depending on protocol
                     print(f"{HTTPS_fg}",end="")
                 if HTTPS_bg:
                     print(f"{HTTPS_bg}",end="")
-                print("HTTPS")
-                
+            
+             
                 if colour: 
-                    print(f"{Style.RESET_ALL}")
+                    print(f"{Style.RESET_ALL}",end="")
                 
             elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
                 pass
@@ -178,7 +178,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             dns = pkt[DNS].mysummary()
         if TCP in pkt and Raw in pkt:
             raw = pkt[Raw]
-            print(bytes(pkt))
+            #print(bytes(pkt))
         
 
             
