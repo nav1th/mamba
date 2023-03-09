@@ -103,8 +103,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 
         if colour:
             print(f"{Style.RESET_ALL}",end="")
-        
-
     
     if HTTP in pkt: 
         http_fg = None
@@ -163,8 +161,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"{TLS_fg}",end="")
             if TLS_bg:
                 print(f"{TLS_bg}",end="")
-            
-            #print("HTTPS")
              
             if colour: 
                 print(f"{Style.RESET_ALL}",end="")
@@ -173,11 +169,13 @@ def proc_pkt(pkt): #handles packets depending on protocol
             pass
     if DNS in pkt:
         dns = pkt[DNS]
-        #print(f"DNS | {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
+        print(f"DNS | {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
+        print(dns.mysummary())
         
     if TCP in pkt and Raw in pkt:
-        raw = pkt[Raw]
-            #print(bytes(pkt))
+        if tcp_sport == 23 or tcp_dport == 23:
+            raw = pkt[Raw]
+            print(raw)
         
 
         
