@@ -41,13 +41,10 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ether_dst = None  
     ip_src = None
     ip_dst = None
-    ipv6_src = None
-    ipv6_dst = None
     tcp_sport = None
     tcp_dport = None
     udp_sport = None
     udp_dport = None
-    num_of_pkts: int = 0
 
     if Ether in pkt:  ## grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -60,25 +57,45 @@ def proc_pkt(pkt): #handles packets depending on protocol
         insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv4)
        
     if IPv6 in pkt: # grab ipv6 info if any
-        ipv6_src = pkt[IPv6].src
-        ipv6_dst = pkt[IPv6].dst
-        insert_src_dst_pairs(ipv6_src,ipv6_dst,pairs_ipv6)
+        ip_src = pkt[IPv6].src
+        ip_dst = pkt[IPv6].dst
+        insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv6)
         if NDP_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
-            print(f"{num_of_pkts} | Router solication message: {ipv6_src} ==> {ipv6_dst}")
+            print(f"NDP - Router solication message | {ip_src} ==> {ip_dst}")
         if NDP_NA in pkt: #neighbour advertisement
-            pass
+            print(f"NDP - Neighbour advertisement | {ip_src} ==> {ip_dst}")
         if NDP_RA in pkt: #router advertisement 
-            pass
+            print(f"NDP - Router advertisement | {ip_src} ==> {ip_dst}")
         if NDP_NS in pkt: #neighbour solicitation
-            pass
+            print(f"NDP - Neighbour solicitation | {ip_src} ==> {ip_dst}")
 
     if TCP in pkt:
         tcp_sport = pkt[TCP].sport
         tcp_dport = pkt[TCP].dport
+        if tcp_sport == 22 or tcp_sport == 22:
+            pass
+        if tcp_sport == 23 or tcp_dport == 23: ## Telnet
+            print(f"TELNET - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        elif (tcp_sport == 20 or tcp_dport == 20) or \
+             (tcp_sport == 21 or tcp_dport == 21): ## FTP
+            print(f"FTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        elif(tcp_sport == 25 or tcp_dport == 25):
+            print(f"SMTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        if tcp_sport == 80 or tcp_dport == 80:
+            pass
+        elif(tcp_sport == 110 or tcp_dport == 110):
+            print(f"POP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        else:
+            print("Unknown")
 
     if UDP in pkt:
         udp_sport = pkt[UDP].sport
         udp_dport = pkt[UDP].dport
+        if udp_sport == 69 or udp_dport == 69:
+            print(f"POP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        if udp_sport == 123 or udp_dport == 123:
+            print(f"NTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+
         
     if ARP in pkt: #ARP       
         arp = pkt[ARP] 
@@ -101,8 +118,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
         elif arp.op == 2: #ARP here's your MAC
             print(f"{arp.hwsrc} is at {arp.psrc}")
                 
-        if colour:
-            print(f"{Style.RESET_ALL}",end="")
     
     if HTTP in pkt: 
         http_fg = None
@@ -127,12 +142,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             url = host+path# the location of website e.g. 'http://hello.com/register/login'
             method = req.Method.decode() #e.g method used in request e.g. 'GET' or 'POST'
             version = req.Http_Version.decode() # http version of request 'HTTP/1.1'
-            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
-            end=" | ")
-            print(f"VERSION: {version} | URL: {url} | METHOD: {method}")
-            if Raw in pkt and verbose:
-                print(f"\tRAW Data: {pkt[Raw].load}")
-            print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
+            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport} | VERSION: {version} | URL: {url} | METHOD: {method}")
             
         if HTTPRes in pkt:
             res = pkt[HTTPRes]
@@ -140,12 +150,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             reason = res.Reason_Phrase.decode()
             version = res.Http_Version.decode()
             status_code = f"{status}: '{reason}'" #Status code e.g '404: Not found'
-
-            print(f"HTTP | {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",
-            end=" | ")
-            print(f"VERSION: {version} | STATUS: {status_code}")
-            if Raw in pkt and verbose:
-                print(f"\tRAW Data: {pkt[Raw].load}")
+            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport} | VERSION: {version} | STATUS: {status_code}")
 
     if TLS in pkt:
         tls = pkt[TLS]
@@ -161,24 +166,25 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"{TLS_fg}",end="")
             if TLS_bg:
                 print(f"{TLS_bg}",end="")
+        if TCP in pkt:
+            print(f"TLS - {ip_src}:{tcp_sport} ==> {ip_src}:{tcp_dport}")
+        elif UDP in pkt:
+            print(f"TLS - {ip_src}:{udp_sport} ==> {ip_src}:{udp_dport}")
              
-            if colour: 
-                print(f"{Style.RESET_ALL}",end="")
                 
-        elif tcp_sport == 22 or tcp_dport == 22: #Traffic is likely to be SSH
-            pass
     if DNS in pkt:
         dns = pkt[DNS]
-        print(f"DNS | {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
-        print(dns.mysummary())
+        if udp_dport == 5353 and udp_sport == 5353:
+            print(f"MDNS - {ip_src} ==> {ip_dst}",end=" | ")
+        else:
+            print(f"DNS - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
+        print(dns.mysummary().decode())
         
-    if TCP in pkt and Raw in pkt:
-        if tcp_sport == 23 or tcp_dport == 23:
-            raw = pkt[Raw]
-            print(raw)
-        
+    if Raw in pkt and verbose:
+        print(f"    Data: {pkt[Raw].load}")
+    if colour:
+        print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
-        
         
 #TODO HTTP Response
 #TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
