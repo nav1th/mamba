@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from socket import getservbyport,getservbyname
 from scapy.main import load_layer
 import msg as m # custom messages
 import args # arguments in program
@@ -45,6 +46,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
     tcp_dport = None
     udp_sport = None
     udp_dport = None
+    sport = None
+    dport = None
 
     if Ether in pkt:  ## grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -72,25 +75,24 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if TCP in pkt:
         tcp_sport = pkt[TCP].sport
         tcp_dport = pkt[TCP].dport
-        if tcp_sport == 22 or tcp_sport == 22:
-            pass
-        if tcp_sport == 23 or tcp_dport == 23: ## Telnet
-            print(f"TELNET - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
-        elif (tcp_sport == 20 or tcp_dport == 20) or \
-             (tcp_sport == 21 or tcp_dport == 21): ## FTP
-            print(f"FTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
-        elif(tcp_sport == 25 or tcp_dport == 25):
-            print(f"SMTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
-        if tcp_sport == 80 or tcp_dport == 80:
-            pass
-        elif(tcp_sport == 110 or tcp_dport == 110):
-            print(f"POP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
-        else:
-            print("Unknown")
+        sport = tcp_sport
+        dport = tcp_dport
+        if Raw not in pkt:
+            if guess_service:
+                try: 
+                    src_service = getservbyport(tcp_sport)
+                except:
+                    src_service = None
+            else:
+                print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+
+
 
     if UDP in pkt:
         udp_sport = pkt[UDP].sport
         udp_dport = pkt[UDP].dport
+        sport = udp_sport
+        dport = udp_dport
         if udp_sport == 69 or udp_dport == 69:
             print(f"POP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
         if udp_sport == 123 or udp_dport == 123:
@@ -166,10 +168,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"{TLS_fg}",end="")
             if TLS_bg:
                 print(f"{TLS_bg}",end="")
-        if TCP in pkt:
-            print(f"TLS - {ip_src}:{tcp_sport} ==> {ip_src}:{tcp_dport}")
-        elif UDP in pkt:
-            print(f"TLS - {ip_src}:{udp_sport} ==> {ip_src}:{udp_dport}")
+        if sport != None or dport != None:
+            print(f"TLS - {ip_src}:{sport} ==> {ip_dst}:{tcp_dport}")
+        print(f"TLS - {ip_src} ==> {ip_dst}")
              
                 
     if DNS in pkt:
@@ -178,7 +179,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"MDNS - {ip_src} ==> {ip_dst}",end=" | ")
         else:
             print(f"DNS - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
-        print(dns.mysummary().decode())
+        print(dns.mysummary())
         
     if Raw in pkt and verbose:
         print(f"    Data: {pkt[Raw].load}")
@@ -186,13 +187,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
         
-#TODO HTTP Response
 #TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
-#TODO SSH
-#TODO TELNET
-#TODO FTP
-#TODO DNS
-#TODO OTHER PROTOCOLS ALONG DE WAY
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
@@ -208,6 +203,7 @@ if __name__ == "__main__":
     verbose = args.verbose 
     if not interface:
         interface = conf.iface
+    guess_service = False
     ##
 
 
