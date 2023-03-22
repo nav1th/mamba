@@ -23,6 +23,7 @@ from collections import Counter
 import os.path
 
 
+
 def good_colour_file(json) -> bool: 
     acceptable_colours = ["YELLOW", "RED", "BLUE", "CYAN", "MAGENTA", "GREEN", "WHITE", "BLACK"]
     for i in json['protocols']:
@@ -78,13 +79,57 @@ def proc_pkt(pkt): #handles packets depending on protocol
         sport = tcp_sport
         dport = tcp_dport
         if Raw not in pkt:
+            flags = pkt[TCP].flags
             if guess_service:
                 try: 
                     src_service = getservbyport(tcp_sport)
                 except:
                     src_service = None
+                try:
+                    dst_service = getservbyport(tcp_dport)
+                except:
+                    dst_service = None
+                if src_service and dst_service:
+                    print(f"TCP - {ip_src}:{src_service} ==> {ip_dst}:{dst_service}",end=" | ")
+                elif src_service and not dst_service:
+                    print(f"TCP - {ip_src}:{src_service} ==> {ip_dst}:{tcp_dport}",end=" | ")
+                elif not src_service and dst_service:
+                    print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{dst_service}",end=" | ")
+                else:
+                    print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
             else:
-                print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+                print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
+            print("FLAGS:",end=" ")
+            if flags & 0x02: #SYN
+                print("SYN",end=" ")
+            if flags & 0x10: #ACK
+                print("ACK",end=" ")
+            if flags & 0x04: #RST
+                print("RST",end=" ")
+            if flags & 0x01: #FIN
+                print("FIN",end=" ")
+            if flags & 0x08: #PSH
+                print("PSH",end=" ")
+            if flags & 0x20: #URG
+                print("URG",end=" ")
+            if flags & 0x80: #CWR
+                print("CWR",end=" ")
+            if flags & 0x40: #ECE
+                print("ECE",end=" ")
+            print()
+                
+
+
+
+#            SYN = 0x02
+#            ACK = 0x10
+#            RST = 0x04
+#            FIN = 0x01 #tcp flags
+#            PSH = 0x08
+#            URG = 0x20
+#            CWR = 0x80
+#            ECE = 0x40
+
 
 
 
@@ -93,10 +138,26 @@ def proc_pkt(pkt): #handles packets depending on protocol
         udp_dport = pkt[UDP].dport
         sport = udp_sport
         dport = udp_dport
-        if udp_sport == 69 or udp_dport == 69:
-            print(f"POP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
-        if udp_sport == 123 or udp_dport == 123:
-            print(f"NTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}")
+        if Raw not in pkt:
+            if guess_service:
+                try: 
+                    src_service = getservbyport(udp_sport)
+                except:
+                    src_service = None
+                try:
+                    dst_service = getservbyport(udp_dport)
+                except:
+                    dst_service = None
+                if src_service and dst_service:
+                    print(f"UDP - {ip_src}:{src_service} ==> {ip_dst}:{dst_service}")
+                elif src_service and not dst_service:
+                    print(f"UDP - {ip_src}:{src_service} ==> {ip_dst}:{udp_dport}")
+                elif not src_service and dst_service:
+                    print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{dst_service}")
+                else:
+                    print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}")
+            else:
+                print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}")
 
         
     if ARP in pkt: #ARP       
