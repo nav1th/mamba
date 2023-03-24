@@ -80,7 +80,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         dport = tcp_dport
         if Raw not in pkt:
             flags = pkt[TCP].flags
-            if guess_service:
+            if guess_service: # if user wishes for service to be detected by port
                 try: 
                     src_service = getservbyport(tcp_sport)
                 except:
@@ -99,46 +99,33 @@ def proc_pkt(pkt): #handles packets depending on protocol
                     print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
             else:
                 print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
-            print("FLAGS:",end=" ")
-            if flags & 0x02: #SYN
-                print("SYN",end=" ")
-            if flags & 0x10: #ACK
-                print("ACK",end=" ")
-            if flags & 0x04: #RST
-                print("RST",end=" ")
-            if flags & 0x01: #FIN
-                print("FIN",end=" ")
-            if flags & 0x08: #PSH
-                print("PSH",end=" ")
-            if flags & 0x20: #URG
-                print("URG",end=" ")
-            if flags & 0x80: #CWR
-                print("CWR",end=" ")
-            if flags & 0x40: #ECE
-                print("ECE",end=" ")
-            print()
-                
-
-
-
-#            SYN = 0x02
-#            ACK = 0x10
-#            RST = 0x04
-#            FIN = 0x01 #tcp flags
-#            PSH = 0x08
-#            URG = 0x20
-#            CWR = 0x80
-#            ECE = 0x40
-
-
-
+            flags_map = {
+                "SYN" : 0x02,
+                "ACK" : 0x10,
+                "RST" : 0x04,
+                "PSH" : 0x08,
+                "URG" : 0x20,
+                "CWR" : 0x80,
+                "ECE" : 0x40
+            }
+            flag_str = ""
+            flag_num = 0
+            for f in ["SYN","ACK" ,"RST" ,"PSH" ,"URG" ,"CWR" ,"ECE"]: 
+                if flags & flags_map[f]: #if certain flag is detected
+                    flag_num +=  1 
+                    flag_str +=  f #add it to the string
+                    flag_str += ', '
+            flag_str = flag_str[0:-2] #get rid of comma at the end
+            if flag_num > 1:
+                flag_str = f"[{flag_str}]" #group of flags, else single flag
+            print(f"FLAGS: {flag_str}")
 
     if UDP in pkt:
         udp_sport = pkt[UDP].sport
         udp_dport = pkt[UDP].dport
         sport = udp_sport
         dport = udp_dport
-        if Raw not in pkt:
+        if Raw not in pkt and DNS not in pkt:
             if guess_service:
                 try: 
                     src_service = getservbyport(udp_sport)
