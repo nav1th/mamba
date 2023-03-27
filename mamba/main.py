@@ -23,6 +23,12 @@ from collections import Counter
 import os.path
 
 
+import string
+printable = string.ascii_letters + string.digits + string.punctuation + ' '
+def hex_escape(s):
+    return ''.join(c if c in printable else r'\x{0:02x}'.format(ord(c)) for c in s)
+
+
 
 def good_colour_file(json) -> bool: 
     acceptable_colours = ["YELLOW", "RED", "BLUE", "CYAN", "MAGENTA", "GREEN", "WHITE", "BLACK"]
@@ -84,6 +90,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             except:
                 pass
         if Raw not in pkt:
+            print(Fore.BLUE,end="")
             flags = pkt[TCP].flags
             print(f"TCP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}",end=" | ")
             flags_map = {
@@ -109,9 +116,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
         if Raw in pkt and \
            not HTTP in pkt and \
            not TLS in pkt: #try to 
-            if src_port == 23:
+            if src_port == 23 or dst_port == 23:
                 print(f"TELNET - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
-        
+            if src_port == 25 or dst_port == 25:
+                print(f"SMTP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
+            if src_port == 110 or dst_port == 110:
+                print(f"POP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
            
 
     if UDP in pkt:
@@ -215,7 +225,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(dns.mysummary())
         
     if Raw in pkt and verbose:
-        print(f"    Data: {pkt[Raw].load}")
+        try: 
+            data = pkt[Raw].load.decode()
+            print(f"    Data: {data}")
+        except:
+            data = pkt[Raw].load.decode('iso-8859-1')
+            print(f"    Data: {hex_escape(data)}")
     if colour:
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
