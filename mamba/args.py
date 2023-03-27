@@ -17,6 +17,7 @@ def grab_args():
     parser.add_argument("-v","--verbose", required=False, action="store_true")
     parser.add_argument("-cL","--colourless",required=False,action="store_false",help="Do not display coloured output")
     parser.add_argument("--no-confirm",dest="no_confirm",required=False,action="store_true",help="Do not ask for confirmation in (y/N) prompts, (automatic yes)")
+    parser.add_argument("--guess-service",dest="guess_service",required=False,action="store_true",help="Try to guess which TCP/UDP service, replacing the port number")
     args = parser.parse_args()
     if args.interface and args.read:
         m.err("can't read from 'pcap' and listen on interface at the same time",args.colourless)
