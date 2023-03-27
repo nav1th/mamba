@@ -43,12 +43,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ether_dst = None  
     ip_src = None
     ip_dst = None
-    tcp_sport = None
-    tcp_dport = None
-    udp_sport = None
-    udp_dport = None
-    sport = None
-    dport = None
+    src_port = None
+    dst_port = None
 
     if Ether in pkt:  ## grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -74,31 +70,22 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"NDP - Neighbour solicitation | {ip_src} ==> {ip_dst}")
 
     if TCP in pkt:
-        tcp_sport = pkt[TCP].sport
-        tcp_dport = pkt[TCP].dport
-        sport = tcp_sport
-        dport = tcp_dport
+        src_port = pkt[TCP].sport
+        dst_port = pkt[TCP].dport
+        src_serv = src_port
+        dst_serv = dst_port
+        if guess_service: # if user wishes for service to be detected by port
+            try: 
+                src_serv = getservbyport(src_port)
+            except:
+                pass
+            try:
+                dst_serv = getservbyport(dst_port)
+            except:
+                pass
         if Raw not in pkt:
             flags = pkt[TCP].flags
-            if guess_service: # if user wishes for service to be detected by port
-                try: 
-                    src_service = getservbyport(tcp_sport)
-                except:
-                    src_service = None
-                try:
-                    dst_service = getservbyport(tcp_dport)
-                except:
-                    dst_service = None
-                if src_service and dst_service:
-                    print(f"TCP - {ip_src}:{src_service} ==> {ip_dst}:{dst_service}",end=" | ")
-                elif src_service and not dst_service:
-                    print(f"TCP - {ip_src}:{src_service} ==> {ip_dst}:{tcp_dport}",end=" | ")
-                elif not src_service and dst_service:
-                    print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{dst_service}",end=" | ")
-                else:
-                    print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
-            else:
-                print(f"TCP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport}",end=" | ")
+            print(f"TCP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}",end=" | ")
             flags_map = {
                 "SYN" : 0x02,
                 "ACK" : 0x10,
@@ -119,32 +106,30 @@ def proc_pkt(pkt): #handles packets depending on protocol
             if flag_num > 1:
                 flag_str = f"[{flag_str}]" #group of flags, else single flag
             print(f"FLAGS: {flag_str}")
+        if Raw in pkt and \
+           not HTTP in pkt and \
+           not TLS in pkt: #try to 
+            if src_port == 23:
+                print(f"TELNET - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
+        
+           
 
     if UDP in pkt:
-        udp_sport = pkt[UDP].sport
-        udp_dport = pkt[UDP].dport
-        sport = udp_sport
-        dport = udp_dport
+        src_port = pkt[UDP].sport
+        dst_port = pkt[UDP].dport
+        src_serv = src_port
+        dst_serv = dst_port 
+        if guess_service:
+            try: 
+                src_serv = getservbyport(src_port)
+            except:
+                pass
+            try:
+                dst_serv = getservbyport(dst_port)
+            except:
+                pass
         if Raw not in pkt and DNS not in pkt:
-            if guess_service:
-                try: 
-                    src_service = getservbyport(udp_sport)
-                except:
-                    src_service = None
-                try:
-                    dst_service = getservbyport(udp_dport)
-                except:
-                    dst_service = None
-                if src_service and dst_service:
-                    print(f"UDP - {ip_src}:{src_service} ==> {ip_dst}:{dst_service}")
-                elif src_service and not dst_service:
-                    print(f"UDP - {ip_src}:{src_service} ==> {ip_dst}:{udp_dport}")
-                elif not src_service and dst_service:
-                    print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{dst_service}")
-                else:
-                    print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}")
-            else:
-                print(f"UDP - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}")
+            print(f"UDP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
 
         
     if ARP in pkt: #ARP       
@@ -192,7 +177,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             url = host+path# the location of website e.g. 'http://hello.com/register/login'
             method = req.Method.decode() #e.g method used in request e.g. 'GET' or 'POST'
             version = req.Http_Version.decode() # http version of request 'HTTP/1.1'
-            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport} | VERSION: {version} | URL: {url} | METHOD: {method}")
+            print(f"HTTP - {ip_src}:{src_port} ==> {ip_dst}:{dst_port} | VERSION: {version} | URL: {url} | METHOD: {method}")
             
         if HTTPRes in pkt:
             res = pkt[HTTPRes]
@@ -200,7 +185,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             reason = res.Reason_Phrase.decode()
             version = res.Http_Version.decode()
             status_code = f"{status}: '{reason}'" #Status code e.g '404: Not found'
-            print(f"HTTP - {ip_src}:{tcp_sport} ==> {ip_dst}:{tcp_dport} | VERSION: {version} | STATUS: {status_code}")
+            print(f"HTTP - {ip_src}:{src_port} ==> {ip_dst}:{dst_port} | VERSION: {version} | STATUS: {status_code}")
 
     if TLS in pkt:
         tls = pkt[TLS]
@@ -216,17 +201,17 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"{TLS_fg}",end="")
             if TLS_bg:
                 print(f"{TLS_bg}",end="")
-        if sport != None or dport != None:
-            print(f"TLS - {ip_src}:{sport} ==> {ip_dst}:{tcp_dport}")
+        if src_port != None or dst_port != None:
+            print(f"TLS - {ip_src}:{src_port} ==> {ip_dst}:{dst_port}")
         print(f"TLS - {ip_src} ==> {ip_dst}")
              
                 
     if DNS in pkt:
         dns = pkt[DNS]
-        if udp_dport == 5353 and udp_sport == 5353:
+        if dst_port == 5353 and src_port == 5353:
             print(f"MDNS - {ip_src} ==> {ip_dst}",end=" | ")
         else:
-            print(f"DNS - {ip_src}:{udp_sport} ==> {ip_dst}:{udp_dport}",end=" | ")
+            print(f"DNS - {ip_src}:{src_port} ==> {ip_dst}:{dst_port}",end=" | ")
         print(dns.mysummary())
         
     if Raw in pkt and verbose:
