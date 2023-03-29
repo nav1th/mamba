@@ -25,12 +25,12 @@ import os.path
 
 import string
 printable = string.ascii_letters + string.digits + string.punctuation + ' '
-def hex_escape(s):
+def hex_escape(s): #for reading reading encrypting 
     return ''.join(c if c in printable else r'\x{0:02x}'.format(ord(c)) for c in s)
 
 
 
-def good_colour_file(json) -> bool: 
+def good_colour_file(json) -> bool: #if the user colour file is correct
     acceptable_colours = ["YELLOW", "RED", "BLUE", "CYAN", "MAGENTA", "GREEN", "WHITE", "BLACK"]
     for i in json['protocols']:
         if i['FG'] not in acceptable_colours:
@@ -46,11 +46,13 @@ def insert_src_dst_pairs(src, dst, counter):
 def proc_pkt(pkt): #handles packets depending on protocol
     ##possible address types
     ether_src = None
-    ether_dst = None  
+    ether_dst = None
     ip_src = None
     ip_dst = None
-    src_port = None
-    dst_port = None
+    sport = None
+    dport = None
+    sserv = None
+    dserv = None
 
     if Ether in pkt:  ## grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -76,70 +78,128 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"NDP - Neighbour solicitation | {ip_src} ==> {ip_dst}")
 
     if TCP in pkt:
-        src_port = pkt[TCP].sport
-        dst_port = pkt[TCP].dport
-        src_serv = src_port
-        dst_serv = dst_port
+        sport = pkt[TCP].sport
+        dport = pkt[TCP].dport
+        sserv = sport
+        dserv = dport
         if guess_service: # if user wishes for service to be detected by port
             try: 
-                src_serv = getservbyport(src_port)
+                sserv = getservbyport(sport)
             except:
                 pass
             try:
-                dst_serv = getservbyport(dst_port)
+                dserv = getservbyport(dport)
             except:
                 pass
         if Raw not in pkt:
-            print(Fore.BLUE,end="")
             flags = pkt[TCP].flags
-            print(f"TCP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}",end=" | ")
-            flags_map = {
-                "SYN" : 0x02,
-                "ACK" : 0x10,
-                "RST" : 0x04,
-                "PSH" : 0x08,
-                "URG" : 0x20,
-                "CWR" : 0x80,
-                "ECE" : 0x40
-            }
-            flag_str = ""
+            flags_found = []
             flag_num = 0
-            for f in ["SYN","ACK" ,"RST" ,"PSH" ,"URG" ,"CWR" ,"ECE"]: 
-                if flags & flags_map[f]: #if certain flag is detected
+            flag_pairs = [
+            ("FIN",  0x1), 
+            ("SYN" , 0x2),
+            ("RST" , 0x4),
+            ("PSH" , 0x8),
+            ("ACK" , 0x10),
+            ("URG" , 0x20),
+            ("ECE" , 0x40),
+            ("CWR" , 0x80),
+            ]
+            for f in flag_pairs: 
+                if flags & f[1]: #if certain flag is detected
                     flag_num +=  1 
-                    flag_str +=  f #add it to the string
-                    flag_str += ', '
-            flag_str = flag_str[0:-2] #get rid of comma at the end
-            if flag_num > 1:
-                flag_str = f"[{flag_str}]" #group of flags, else single flag
-            print(f"FLAGS: {flag_str}")
+                    flags_found.append(f[0])  #add it to list of flags found
+            if "RST" in flags_found:
+                print(Back.BLACK,end="")
+                print(Fore.RED,end="")
+            if "SYN" in flags_found and "ACK" in flags_found:
+                print(Fore.CYAN,end="")
+            print(f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}",end=" | ")
+            print(f"FLAGS: {flags_found}") #group of flags, else single flag
         if Raw in pkt and \
-           not HTTP in pkt and \
-           not TLS in pkt: #try to 
-            if src_port == 23 or dst_port == 23:
-                print(f"TELNET - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
-            if src_port == 25 or dst_port == 25:
-                print(f"SMTP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
-            if src_port == 110 or dst_port == 110:
-                print(f"POP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
-           
+        not HTTP in pkt and \
+        not TLS in pkt:
+            if 20 in (sport,dport) or 21 in (sport,dport):
+                print(f"FTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 23 in (sport,dport):
+                print(f"TELNET - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 25 in (sport,dport):
+                print(f"SMTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 43 in (sport,dport):
+                print(f"WHOIS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 110 in (sport,dport):
+                print(f"POP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 143 in (sport,dport):
+                print(f"IMAP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 443 in (sport,dport):
+                print(Fore.GREEN,end="")
+                print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            else:
+                proto = None
+                if sport > dport:
+                    try: 
+                        proto = getservbyport(sport)
+                    except:
+                        try:
+                            proto = getservbyport(dport)
+                        except: pass
+                elif sport < dport:
+                    try: 
+                        proto = getservbyport(dport)
+                    except:
+                        try:
+                            proto = getservbyport(sport)
+                        except: pass
+                else:
+                    try:
+                        proto = getservbyport(sport)
+                    except: pass                       
+                if proto:
+                    print(f"{proto.upper()} - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+                else:
+                    print(f"UNKNOWN - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
 
     if UDP in pkt:
-        src_port = pkt[UDP].sport
-        dst_port = pkt[UDP].dport
-        src_serv = src_port
-        dst_serv = dst_port 
+        sport = pkt[UDP].sport
+        dport = pkt[UDP].dport
+        sserv = sport
+        dserv = dport 
         if guess_service:
             try: 
-                src_serv = getservbyport(src_port)
-            except:
-                pass
+                sserv = getservbyport(sport)
+            except: pass
             try:
-                dst_serv = getservbyport(dst_port)
-            except:
-                pass
-        if Raw not in pkt and DNS not in pkt:
-            print(f"UDP - {ip_src}:{src_serv} ==> {ip_dst}:{dst_serv}")
+                dserv = getservbyport(dport)
+            except: pass
+        if Raw not in pkt and not DNS in pkt:
+            print(f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+        if Raw in pkt and not DNS in pkt:
+            if 67 in (sport,dport) or 68 in (sport,dport):
+                print(f"DHCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            else: # detect using portnumber for everything else 
+                proto = None
+                if sport > dport:
+                    try: 
+                        proto = getservbyport(sport)
+                    except:
+                        try:
+                            proto = getservbyport(dport)
+                        except: pass
+                elif sport < dport:
+                    try: 
+                        proto = getservbyport(dport)
+                    except:
+                        try:
+                            proto = getservbyport(sport)
+                        except: pass
+                else:
+                    try:
+                        proto = getservbyport(sport)
+                    except: pass                       
+                if proto:
+                    print(f"{proto.upper()} - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+                else:
+                    print(f"UNKNOWN - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
 
         
     if ARP in pkt: #ARP       
@@ -162,7 +222,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"{arp.psrc} is asking who has MAC for {arp.pdst}")
         elif arp.op == 2: #ARP here's your MAC
             print(f"{arp.hwsrc} is at {arp.psrc}")
-                
     
     if HTTP in pkt: 
         http_fg = None
@@ -187,15 +246,17 @@ def proc_pkt(pkt): #handles packets depending on protocol
             url = host+path# the location of website e.g. 'http://hello.com/register/login'
             method = req.Method.decode() #e.g method used in request e.g. 'GET' or 'POST'
             version = req.Http_Version.decode() # http version of request 'HTTP/1.1'
-            print(f"HTTP - {ip_src}:{src_port} ==> {ip_dst}:{dst_port} | VERSION: {version} | URL: {url} | METHOD: {method}")
-            
-        if HTTPRes in pkt:
+            print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport} | VERSION: {version} | URL: {url} | METHOD: {method}")
+        elif HTTPRes in pkt:
             res = pkt[HTTPRes]
             status = res.Status_Code.decode()
             reason = res.Reason_Phrase.decode()
             version = res.Http_Version.decode()
             status_code = f"{status}: '{reason}'" #Status code e.g '404: Not found'
-            print(f"HTTP - {ip_src}:{src_port} ==> {ip_dst}:{dst_port} | VERSION: {version} | STATUS: {status_code}")
+            print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport} | VERSION: {version} | STATUS: {status_code}")
+        else:
+            print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}")
+
 
     if TLS in pkt:
         tls = pkt[TLS]
@@ -211,17 +272,15 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"{TLS_fg}",end="")
             if TLS_bg:
                 print(f"{TLS_bg}",end="")
-        if src_port != None or dst_port != None:
-            print(f"TLS - {ip_src}:{src_port} ==> {ip_dst}:{dst_port}")
-        print(f"TLS - {ip_src} ==> {ip_dst}")
+        print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
              
                 
     if DNS in pkt:
         dns = pkt[DNS]
-        if dst_port == 5353 and src_port == 5353:
+        if dport == 5353 and sport == 5353:
             print(f"MDNS - {ip_src} ==> {ip_dst}",end=" | ")
         else:
-            print(f"DNS - {ip_src}:{src_port} ==> {ip_dst}:{dst_port}",end=" | ")
+            print(f"DNS - {ip_src}:{sport} ==> {ip_dst}:{dport}",end=" | ")
         print(dns.mysummary())
         
     if Raw in pkt and verbose:
@@ -235,7 +294,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
         
-#TODO TCP HANDSHAKE (SYN, SYN-ACK, ACK)
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
@@ -251,7 +309,7 @@ if __name__ == "__main__":
     verbose = args.verbose 
     if not interface:
         interface = conf.iface
-    guess_service = False
+    guess_service = args.guess_service
     ##
 
 
@@ -309,4 +367,3 @@ if __name__ == "__main__":
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
-
