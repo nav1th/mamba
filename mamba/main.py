@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+
 from socket import getservbyport,getservbyname
 from scapy.main import load_layer
+from scapy.utils import hexdump
+from scapy.utils6 import in6_isaddrTeredo
 import msg as m # custom messages
 import args # arguments in program
 from colorama import Fore, Back, Style
-from scapy.all import sniff, Raw,wrpcap,conf
-from scapy.layers.l2 import ARP, Ether
-from  scapy.layers.inet import IP, TCP, UDP
-from scapy.layers.inet6 import  \
+from scapy.all           import sniff, Raw,wrpcap,conf
+from scapy.layers.l2     import ARP, Ether
+from scapy.layers.inet   import IP, TCP, UDP, ICMP
+from scapy.layers.inet6  import  \
         IPv6, \
         ICMPv6ND_NA as NDP_NA, \
         ICMPv6ND_RA as NDP_RA, \
@@ -16,6 +19,11 @@ from scapy.layers.inet6 import  \
 from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRes
 from scapy.layers.tls.record import TLS
 from scapy.layers.dns import DNS
+from scapy.layers.dhcp import DHCP
+from scapy.layers.dhcp6 import DHCP6
+from scapy.layers.rip import RIP
+from scapy.layers.dot11 import Dot11
+from scapy.layers.tftp import TFTP
 import json
 
 load_layer("tls")
@@ -49,12 +57,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ether_dst = None
     ip_src = None
     ip_dst = None
-    sport = None
+    sport =  None
     dport = None
     sserv = None
     dserv = None
 
-    if Ether in pkt:  ## grab ethernet info if any
+    if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src 
         ether_dst = pkt[Ether].dst  
         insert_src_dst_pairs(ether_src,ether_dst,pairs_ether)
@@ -82,6 +90,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         dport = pkt[TCP].dport
         sserv = sport
         dserv = dport
+        alt_proto = [HTTP, TLS] # these protocols are handled elsewhere in the program
         if guess_service: # if user wishes for service to be detected by port
             try: 
                 sserv = getservbyport(sport)
@@ -91,7 +100,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if Raw not in pkt:
+        if Raw not in pkt and \
+        not any(i in pkt for i in alt_proto):
             flags = pkt[TCP].flags
             flags_found = []
             flag_num = 0
@@ -116,9 +126,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(Fore.CYAN,end="")
             print(f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}",end=" | ")
             print(f"FLAGS: {flags_found}") #group of flags, else single flag
-        if Raw in pkt and \
-        not HTTP in pkt and \
-        not TLS in pkt:
+        elif Raw in pkt and \
+        not any(i in pkt for i in alt_proto):
             if 20 in (sport,dport) or 21 in (sport,dport):
                 print(f"FTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
             elif 23 in (sport,dport):
@@ -159,11 +168,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 else:
                     print(f"UNKNOWN - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
 
-    if UDP in pkt:
+    elif UDP in pkt:
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
         sserv = sport
         dserv = dport 
+        alt_proto = [TLS,DHCP,DHCP6,DNS,TFTP] # these protocols are handled elsewhere in the program
         if guess_service:
             try: 
                 sserv = getservbyport(sport)
@@ -171,11 +181,15 @@ def proc_pkt(pkt): #handles packets depending on protocol
             try:
                 dserv = getservbyport(dport)
             except: pass
-        if Raw not in pkt and not DNS in pkt:
+        if not Raw in pkt and \
+        not any(i in pkt for i in alt_proto):
             print(f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-        if Raw in pkt and not DNS in pkt:
-            if 67 in (sport,dport) or 68 in (sport,dport):
-                print(f"DHCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+        elif Raw in pkt and \
+        not any(i in pkt for i in alt_proto):
+            if 123 in (sport,dport):
+                print(f"NTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+            elif 3544 in (sport,dport):
+                print(f"TEREDO - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
             else: # detect using portnumber for everything else 
                 proto = None
                 if sport > dport:
@@ -223,7 +237,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         elif arp.op == 2: #ARP here's your MAC
             print(f"{arp.hwsrc} is at {arp.psrc}")
     
-    if HTTP in pkt: 
+    elif HTTP in pkt: 
         http_fg = None
         http_bg = None
         if colour:
@@ -258,7 +272,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}")
 
 
-    if TLS in pkt:
+    elif TLS in pkt:
         tls = pkt[TLS]
         version = tls.version
         if colour: 
@@ -275,14 +289,22 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
              
                 
-    if DNS in pkt:
+    elif DNS in pkt:
         dns = pkt[DNS]
         if dport == 5353 and sport == 5353:
             print(f"MDNS - {ip_src} ==> {ip_dst}",end=" | ")
         else:
             print(f"DNS - {ip_src}:{sport} ==> {ip_dst}:{dport}",end=" | ")
         print(dns.mysummary())
-        
+    elif TFTP in pkt:
+        tftp = pkt[TFTP]
+        print(f"TFTP - {ip_src}:{sserv} => {ip_dst}:{dserv} | {tftp.mysummary()}")
+
+    elif ICMP in pkt:
+        icmp = pkt[ICMP]
+        print(f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}")
+
+
     if Raw in pkt and verbose:
         try: 
             data = pkt[Raw].load.decode()
@@ -292,6 +314,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"    Data: {hex_escape(data)}")
     if colour:
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
+
+    #TODO
+    #Teredo
+    #Routing Protocols: BGP, RIP, 
+    #ICMP, ICMPv6
 
         
         
