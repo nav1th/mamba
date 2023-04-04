@@ -125,7 +125,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
             if "SYN" in flags_found and "ACK" in flags_found:
                 print(Fore.CYAN,end="")
             print(f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}",end=" | ")
-            print(f"FLAGS: {flags_found}") #group of flags, else single flag
+            if verbose:
+                print(f"FLAGS: {flags_found}",end=" | ") #group of flags, else single flag
+            else:
+                print(f"FLAGS: {flags_found}") #group of flags, else single flag
+                print(f"")
         elif Raw in pkt and \
         not any(i in pkt for i in alt_proto):
             if 20 in (sport,dport) or 21 in (sport,dport):
@@ -303,6 +307,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
     elif ICMP in pkt:
         icmp = pkt[ICMP]
         print(f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}")
+    elif DHCP in pkt:
+        dhcp = pkt[DHCP]
+        print(f"DHCP - {ip_src} ==> {ip_dst} | {dhcp.mysummary()} ")
 
 
     if Raw in pkt and verbose:
