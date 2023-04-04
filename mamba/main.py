@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-
+import msg as m # custom messages
+import args # arguments in program
 from socket import getservbyport,getservbyname
+from colorama import Fore, Back, Style
 from scapy.main import load_layer
 from scapy.utils import hexdump
 from scapy.utils6 import in6_isaddrTeredo
-import msg as m # custom messages
-import args # arguments in program
-from colorama import Fore, Back, Style
 from scapy.all           import sniff, Raw,wrpcap,conf
 from scapy.layers.l2     import ARP, Ether
 from scapy.layers.inet   import IP, TCP, UDP, ICMP
@@ -20,13 +19,14 @@ from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRe
 from scapy.layers.tls.record import TLS
 from scapy.layers.dns import DNS
 from scapy.layers.dhcp import DHCP
-from scapy.layers.dhcp6 import DHCP6
-from scapy.layers.rip import RIP
-from scapy.layers.dot11 import Dot11
+from scapy.layers.ntp import NTP 
+from scapy.layers.rip import RIP,RIPEntry 
 from scapy.layers.tftp import TFTP
-import json
+from scapy.layers.netbios import NBNSHeader, NBNSQueryRequest, NBNSQueryResponse
+from scapy.error import Scapy_Exception
 
 load_layer("tls")
+from datetime import datetime
 from collections import Counter
 import os.path
 
@@ -36,32 +36,26 @@ printable = string.ascii_letters + string.digits + string.punctuation + ' '
 def hex_escape(s): #for reading reading encrypting 
     return ''.join(c if c in printable else r'\x{0:02x}'.format(ord(c)) for c in s)
 
-
-
-def good_colour_file(json) -> bool: #if the user colour file is correct
-    acceptable_colours = ["YELLOW", "RED", "BLUE", "CYAN", "MAGENTA", "GREEN", "WHITE", "BLACK"]
-    for i in json['protocols']:
-        if i['FG'] not in acceptable_colours:
-            return False
-        if i['BG'] != None and i['BG'] not in acceptable_colours:
-            return False
-    return True 
-
 def insert_src_dst_pairs(src, dst, counter):
     key = tuple(sorted([src,dst])) #bundles src and dst together
     counter.update(key) #updates amount of pairs 
 
 def proc_pkt(pkt): #handles packets depending on protocol
     ##possible address types
+    time =  int(pkt.time)
+    date = datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
+    print(f"{date} ",end="")
     ether_src = None
     ether_dst = None
     ip_src = None
     ip_dst = None
     sport =  None
     dport = None
+    # variables below allow for guessing the TCP/UDP protocol used if user wishes, 
+    #otherwise they will be the same as the TCP/UDP port numbers
     sserv = None
     dserv = None
-
+    
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src 
         ether_dst = pkt[Ether].dst  
@@ -85,9 +79,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
         if NDP_NS in pkt: #neighbour solicitation
             print(f"NDP - Neighbour solicitation | {ip_src} ==> {ip_dst}")
 
-    if TCP in pkt:
+    if TCP in pkt: #any TCP data in packet
         sport = pkt[TCP].sport
         dport = pkt[TCP].dport
+        seq = pkt[TCP].seq
+        ack = pkt[TCP].ack
         sserv = sport
         dserv = dport
         alt_proto = [HTTP, TLS] # these protocols are handled elsewhere in the program
@@ -100,12 +96,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if Raw not in pkt and \
-        not any(i in pkt for i in alt_proto):
+        if not Raw in pkt and \
+        not any(i in pkt for i in alt_proto): #Raw TCP packet wihh no app data 
             flags = pkt[TCP].flags
             flags_found = []
             flag_num = 0
-            flag_pairs = [
+            flag_pairs = [ #the flags which are handled 
             ("FIN",  0x1), 
             ("SYN" , 0x2),
             ("RST" , 0x4),
@@ -115,21 +111,24 @@ def proc_pkt(pkt): #handles packets depending on protocol
             ("ECE" , 0x40),
             ("CWR" , 0x80),
             ]
-            for f in flag_pairs: 
+            for f in flag_pairs: #checks flags, ands them to see if they are present
                 if flags & f[1]: #if certain flag is detected
                     flag_num +=  1 
                     flags_found.append(f[0])  #add it to list of flags found
             if "RST" in flags_found:
                 print(Back.BLACK,end="")
                 print(Fore.RED,end="")
+            if  "SYN" in flags_found:
+                print(Fore.GREEN,end="")
             if "SYN" in flags_found and "ACK" in flags_found:
                 print(Fore.CYAN,end="")
+                
             print(f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}",end=" | ")
-            if verbose:
+            if verbose: #if user wants more information
                 print(f"FLAGS: {flags_found}",end=" | ") #group of flags, else single flag
+                print(f"SEQ: {seq} ACK: {ack}")
             else:
                 print(f"FLAGS: {flags_found}") #group of flags, else single flag
-                print(f"")
         elif Raw in pkt and \
         not any(i in pkt for i in alt_proto):
             if 20 in (sport,dport) or 21 in (sport,dport):
@@ -144,40 +143,40 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 print(f"POP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
             elif 143 in (sport,dport):
                 print(f"IMAP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-            elif 443 in (sport,dport):
+            elif 443 in (sport,dport):  
                 print(Fore.GREEN,end="")
                 print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-            else:
+            else: #handles other TCP protocols and guesses the service
                 proto = None
-                if sport > dport:
+                if sport > dport: # lower port numbers are prioritised 
                     try: 
-                        proto = getservbyport(sport)
+                        proto = getservbyport(sport) #guesses src port service
                     except:
                         try:
-                            proto = getservbyport(dport)
+                            proto = getservbyport(dport) #guesses dst port service
                         except: pass
                 elif sport < dport:
                     try: 
-                        proto = getservbyport(dport)
+                        proto = getservbyport(dport) #guesses dst port service
                     except:
                         try:
-                            proto = getservbyport(sport)
+                            proto = getservbyport(sport) #guesses src port service
                         except: pass
                 else:
                     try:
-                        proto = getservbyport(sport)
+                        proto = getservbyport(sport) #order doesn't matter as src and dst ports are the same
                     except: pass                       
-                if proto:
+                if proto: #if there's a guess
                     print(f"{proto.upper()} - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-                else:
-                    print(f"UNKNOWN - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+                else: #if it still has no idea, it just displays its a TCP protocol
+                    print(f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
 
     elif UDP in pkt:
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
         sserv = sport
         dserv = dport 
-        alt_proto = [TLS,DHCP,DHCP6,DNS,TFTP] # these protocols are handled elsewhere in the program
+        alt_proto = [TLS,DHCP,DNS,TFTP,NBNSHeader,NTP] # these protocols are handled elsewhere in the program
         if guess_service:
             try: 
                 sserv = getservbyport(sport)
@@ -186,38 +185,33 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 dserv = getservbyport(dport)
             except: pass
         if not Raw in pkt and \
-        not any(i in pkt for i in alt_proto):
+        not any(i in pkt for i in alt_proto): #raw UDP packets with no app data 
             print(f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
         elif Raw in pkt and \
-        not any(i in pkt for i in alt_proto):
-            if 123 in (sport,dport):
-                print(f"NTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-            elif 3544 in (sport,dport):
-                print(f"TEREDO - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-            else: # detect using portnumber for everything else 
+        not any(i in pkt for i in alt_proto): #handles other UDP protocols and guesses the service
                 proto = None
                 if sport > dport:
                     try: 
-                        proto = getservbyport(sport)
+                        proto = getservbyport(sport) #guesses src port service
                     except:
                         try:
-                            proto = getservbyport(dport)
+                            proto = getservbyport(dport) #guesses dst port service
                         except: pass
                 elif sport < dport:
                     try: 
-                        proto = getservbyport(dport)
+                        proto = getservbyport(dport) #guesses dst port service
                     except:
                         try:
-                            proto = getservbyport(sport)
+                            proto = getservbyport(sport) #guesses src port service
                         except: pass
                 else:
                     try:
-                        proto = getservbyport(sport)
+                        proto = getservbyport(sport) #order doesn't matter as src and dst ports are the same
                     except: pass                       
-                if proto:
+                if proto: #if there's a guess
                     print(f"{proto.upper()} - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
-                else:
-                    print(f"UNKNOWN - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+                else: #if it still has no idea, it just displays its a UDP protocol
+                    print(f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
 
         
     if ARP in pkt: #ARP       
@@ -225,15 +219,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         arp_fg = None
         arp_bg = None
         if colour:
-            if colour_json:
-                arp_fg = "json magic fg"
-                arp_bg = "json magic bg"
-            else:  #default colours
-                arp_fg = Fore.MAGENTA
-        if arp_fg:
-            print(f"{arp_fg}",end="")
-        if arp_bg:
-            print(f"{arp_bg}",end="")
+            print(f"{Fore.LIGHTMAGENTA_EX}",end="")
             
         print(f"ARP - {ether_src} ==> {ether_dst}",end="  | ")
         if arp.op == 1:  #ARP who has the MAC for this IP
@@ -241,21 +227,23 @@ def proc_pkt(pkt): #handles packets depending on protocol
         elif arp.op == 2: #ARP here's your MAC
             print(f"{arp.hwsrc} is at {arp.psrc}")
     
+    elif ICMP in pkt:
+        icmp = pkt[ICMP]
+        print(f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}")
+    
+    elif TLS in pkt:
+        tls = pkt[TLS]
+        version = tls.version
+        if colour: 
+            print(f"{Fore.GREEN}",end="")
+        print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
+        
     elif HTTP in pkt: 
         http_fg = None
         http_bg = None
         if colour:
-            if colour_json:
-                http_fg = "json magic fg"
-                http_bg = "json magic bg"
-            else:  #default colours
-                http_fg = Fore.YELLOW
-                http_bg = None
-                
-            if http_fg: #Adds foreground colours if desired
-                print(f"{http_fg}",end="") #adds colouring here
-            if http_bg: #Adds background colours if desired
-                print(f"{http_bg}",end="")   
+            print(f"{Fore.YELLOW}",end="") 
+
 
         if HTTPReq in pkt: # decode HTTP requests 
             req = pkt[HTTPReq]
@@ -274,23 +262,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
             print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport} | VERSION: {version} | STATUS: {status_code}")
         else:
             print(f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}")
-
-
-    elif TLS in pkt:
-        tls = pkt[TLS]
-        version = tls.version
-        if colour: 
-            if colour_json:
-                TLS_fg = "json_magic"
-                TLS_bg = "json_magic"
-            else:
-                TLS_fg = Fore.GREEN
-                TLS_bg = None
-            if TLS_fg:
-                print(f"{TLS_fg}",end="")
-            if TLS_bg:
-                print(f"{TLS_bg}",end="")
-        print(f"TLS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}")
              
                 
     elif DNS in pkt:
@@ -300,16 +271,40 @@ def proc_pkt(pkt): #handles packets depending on protocol
         else:
             print(f"DNS - {ip_src}:{sport} ==> {ip_dst}:{dport}",end=" | ")
         print(dns.mysummary())
+        
     elif TFTP in pkt:
         tftp = pkt[TFTP]
         print(f"TFTP - {ip_src}:{sserv} => {ip_dst}:{dserv} | {tftp.mysummary()}")
 
-    elif ICMP in pkt:
-        icmp = pkt[ICMP]
-        print(f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}")
+        
     elif DHCP in pkt:
         dhcp = pkt[DHCP]
-        print(f"DHCP - {ip_src} ==> {ip_dst} | {dhcp.mysummary()} ")
+        print(f"DHCP - {ip_src} ==> {ip_dst} | {dhcp.mysummary()}")
+    
+    elif NTP in pkt: 
+        ntp = pkt[NTP]
+        print(f"NTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {ntp.mysummary()}")
+        
+    elif NBNSHeader in pkt:
+        nbns = pkt[NBNSHeader]
+        print(f"NBNS - {ip_src}:{sserv} ==> {ip_dst}:{dserv}", end=" | ")
+        if NBNSQueryRequest in pkt:
+            print(pkt[NBNSQueryRequest].mysummary())
+        elif NBNSQueryResponse in pkt:
+            print(pkt[NBNSQueryResponse].mysummary())
+        else:
+            print()
+
+    elif RIP in pkt:
+        rip = pkt[RIP]
+        print("RIP - {ip_src} ==> {ip_dst}",end="")
+        if RIPEntry in pkt:
+            entry = pkt[RIPEntry]
+            mask = entry.mask
+            addr = entry.addr
+            next = entry.nextHop
+            print(f" | addr: {addr} mask: {mask} next: {next}",end="")
+        print()
 
 
     if Raw in pkt and verbose:
@@ -322,12 +317,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if colour:
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
-    #TODO
-    #Teredo
-    #Routing Protocols: BGP, RIP, 
-    #ICMP, ICMPv6
-
-        
         
 if __name__ == "__main__":
     args = args.grab_args() #grab arguments from CLI input
@@ -345,19 +334,6 @@ if __name__ == "__main__":
         interface = conf.iface
     guess_service = args.guess_service
     ##
-
-
-    if colour: #TODO colour will be last thing to worry about
-       try: 
-           f = open("colour.json")
-           colour_json = json.load(f)
-           good_colour_file(colour_json)
-       except:
-           m.warn("user defined colour rules could not be opened. using default scheme",colour)
-           colour_json = False # colour.json file, if false it either can't be read or doesn't exist
-       else:
-           f.close()
-
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
         if os.path.exists(write_pcap):
@@ -385,19 +361,23 @@ if __name__ == "__main__":
     if read_pcap:
         try: 
             capture = sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count) 
-            #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
+        except Scapy_Exception as e:
+            m.err(f"failed to sniff pcap file: {e}",colour)
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
     else: #must be interface being used then
         try: 
             capture = sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
-            #TODO print better output if filter is wrong
         except OSError as e:
            m.err(f"failed to sniff on {interface} due to '{e.strerror.lower()}'",colour)
            exit(e.errno)
+        except Scapy_Exception as e:
+            m.err(f"failed to sniff live capture: {e}",colour)
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
+    
+            
