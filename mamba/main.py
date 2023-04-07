@@ -18,6 +18,8 @@ from scapy.layers.inet6  import  \
 from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRes
 from scapy.layers.tls.record import TLS
 from scapy.layers.tls.record_tls13 import TLS13
+from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
+from scapy.layers.tls.cert import Cert
 from scapy.layers.dns import DNS
 from scapy.layers.dhcp import DHCP
 from scapy.layers.ntp import NTP 
@@ -47,7 +49,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
     ##possible address types
     time =  int(pkt[0].time)
     date = datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
-    print(f"{date} ",end="")
     ether_src = None
     ether_dst = None
     ip_src = None
@@ -88,11 +89,28 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if TCP in pkt: #any TCP data in packet
         sport = pkt[TCP].sport
         dport = pkt[TCP].dport
-        seq = pkt[TCP].seq
-        ack = pkt[TCP].ack
         sserv = sport
         dserv = dport
-        alt_proto = [HTTP, TLS] # these protocols are handled elsewhere in the program
+        flags = pkt[TCP].flags
+        seq = pkt[TCP].seq #sequence number 
+        ack = pkt[TCP].ack #acknowledgement number
+        flags_found = []
+        flag_num = 0
+        flag_pairs = [ #the flags which are handled 
+        ("FIN",  0x1), 
+        ("SYN" , 0x2),
+        ("RST" , 0x4),
+        ("PSH" , 0x8),
+        ("ACK" , 0x10),
+        ("URG" , 0x20),
+        ("ECE" , 0x40),
+        ("CWR" , 0x80),
+        ]
+        for f in flag_pairs: #checks flags, ands them to see if they are present
+            if flags & f[1]: #if certain flag is detected
+                flag_num +=  1 
+                flags_found.append(f[0])  #add it to list of flags found
+        alt_proto = [HTTP,TLS,TLS13] # these protocols are handled elsewhere in the program
         if guess_service: # if user wishes for service to be detected by port
             try: 
                 sserv = getservbyport(sport)
@@ -104,28 +122,13 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 pass
         if not Raw in pkt and \
         not any(i in pkt for i in alt_proto): #Raw TCP packet wihh no app data 
-            flags = pkt[TCP].flags
-            flags_found = []
-            flag_num = 0
-            flag_pairs = [ #the flags which are handled 
-            ("FIN",  0x1), 
-            ("SYN" , 0x2),
-            ("RST" , 0x4),
-            ("PSH" , 0x8),
-            ("ACK" , 0x10),
-            ("URG" , 0x20),
-            ("ECE" , 0x40),
-            ("CWR" , 0x80),
-            ]
-            for f in flag_pairs: #checks flags, ands them to see if they are present
-                if flags & f[1]: #if certain flag is detected
-                    flag_num +=  1 
-                    flags_found.append(f[0])  #add it to list of flags found
             if "RST" in flags_found:
                 pcolours+=Back.BLACK
                 pcolours+=Fore.RED
             if  "SYN" in flags_found:
                 pcolours+=Fore.GREEN
+            if "ACK" in flags_found:
+                pcolours+=Fore.YELLOW
             if "SYN" in flags_found and "ACK" in flags_found:
                 pcolours+=Fore.CYAN
                 
@@ -149,6 +152,14 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 protocol+=f"POP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
             elif 143 in (sport,dport):
                 protocol+=f"IMAP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+            elif 443 in (sport,dport):
+                #bug with scapy as wireshark output is different
+                protocol +=  f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
+                if verbose: #if user wants more information
+                    protocol += f"FLAGS: {flags_found} " #group of flags, else single flag
+                    protocol += f"SEQ: {seq} ACK: {ack}"
+                else:
+                    protocol +=  f"FLAGS: {flags_found}" #group of flags, else single flagpy
             else: #handles other TCP protocols and guesses the service
                 proto = None
                 if sport > dport: # lower port numbers are prioritised 
@@ -219,8 +230,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
         
     if ARP in pkt: #ARP       
         arp = pkt[ARP] 
-        arp_fg = None
-        arp_bg = None
         if colour:
             pcolours += f"{Fore.LIGHTMAGENTA_EX}"
             
@@ -234,6 +243,13 @@ def proc_pkt(pkt): #handles packets depending on protocol
         icmp = pkt[ICMP]
         protocol += f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}"
 
+    elif IGMP in pkt or IGMPv3 in pkt:
+        if IGMP in pkt:
+            igmp = pkt[IGMP]
+        else:
+            igmp = pkt[IGMPv3]
+            protocol += f"IGMPv3 - {ip_src} ==> {ip_dst} | {igmp.igmpv3types[igmp.type]}"
+
     
     elif TLS in pkt or TLS13 in pkt:
         if colour: 
@@ -242,16 +258,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
             tls = pkt[TLS]
             version = tls.version
             type = tls.mysummary().split("/")[-1].strip()
-            protocol+=f"TLSv1.2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {type}"
-        else:
-            protocol+=f"TLSv1.2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+            protocol+=f"TLSv1.3 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {type}"
 
     elif HTTP in pkt: 
-        http_fg = None
-        http_bg = None
         if colour:
             pcolours += f"{Fore.YELLOW}" 
-
 
         if HTTPReq in pkt: # decode HTTP requests 
             req = pkt[HTTPReq]
@@ -273,6 +284,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
              
                 
     elif DNS in pkt:
+        if colour:
+            pcolours += Fore.BLUE
+
         dns = pkt[DNS]
         if dport == 5353 and sport == 5353:
             protocol += f"MDNS - {ip_src} ==> {ip_dst} | "
@@ -301,21 +315,25 @@ def proc_pkt(pkt): #handles packets depending on protocol
             protocol += f" | {pkt[NBNSQueryResponse].mysummary()}"
 
     elif RIP in pkt:
-        rip = pkt[RIP]
-        protocol += "RIP - {ip_src} ==> {ip_dst}"
+        protocol += f"RIP - {ip_src} ==> {ip_dst}"
         if RIPEntry in pkt:
             entry = pkt[RIPEntry]
             mask = entry.mask
             addr = entry.addr
             next = entry.nextHop
             protocol += f" | addr: {addr} mask: {mask} next: {next}"
+    elif Cert in pkt:
+        protocol+=f"RIP - {ip_src} ==> {ip_dst}"
 
-    if protocol != "":
-        if pcolours != "":
-            print(f"{pcolours}",end="")
-        print(f"{pcolours} {date} {protocol}")
-    else:
-        print
+    if protocol == "":
+        protocol += f"UNKNOWN"
+        if IP in pkt or IPv6 in pkt:
+            protocol += f" - {ip_src} ==> {ip_dst}"
+        elif Ether in pkt:
+            protocol += f" - {ether_src} ==> {ether_dst}"
+    if pcolours != "":
+        print(f"{pcolours}",end="")
+    print(f"{date} {protocol}")
 
     if Raw in pkt and verbose:
         try: 
@@ -335,7 +353,7 @@ if __name__ == "__main__":
     write_pcap = args.write #if user wishes to write their packet capture to a file
     read_pcap = args.read #if user wishes to perform offline capture by reading 'pcap' file
     interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
-    count = args.count
+    count = args.count #how many packets will be captured from live/pcap file, e.g. if count is 10, only 10 packets will be captured, then program ends
     no_confirm = args.no_confirm
     verbose = args.verbose 
     plot = True
