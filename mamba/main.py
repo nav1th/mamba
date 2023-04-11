@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+
+#Imports
 import msg as m # custom messages
 import args # arguments in program
+
+#Python imports
 from socket import getservbyport
 from datetime import datetime
 from collections import Counter
 import os.path
+import string
+from typing import Tuple
+
+#Colorama
 from colorama import Fore, Back, Style
 
 #Scapy 
@@ -78,10 +86,28 @@ from scapy.contrib.igmpv3 import IGMPv3
 load_layer("tls")
 
 
-import string
 printable = string.ascii_letters + string.digits + string.punctuation + ' '
 def hex_escape(s): #for reading reading encrypting 
     return ''.join(c if c in printable else r'\x{0:02x}'.format(ord(c)) for c in s)
+
+def check_write_ok(path) -> Tuple[bool,int,str]: #checks if writing to pcap is okay
+    #returns bool, error number, error string
+    #if int is > 0 and str is not empty error has occured
+        if os.path.exists(path): 
+            if confirm: #user doesn't want to be prompted
+                if not m.warn_confirmed(f"'{path}' exists, it will be overwritten.",colour): #if user doesn't want to overwrite file
+                    m.info("understood, exiting...",colour)
+                    return (False, 0,"") 
+            else:
+                m.warn(f"'{path}' exists, will be overwritten",colour)
+        try: 
+            f = open(path,"w") #tests to see if pcap can be written
+        except OSError as e:
+            m.err(f"could not write '{path}' due to '{e.strerror.lower()}'",colour)
+            return (False, e.errno,e.strerror)
+        else:
+            f.close() # close file, so nothing messes up
+            return (True, 0,"")
 
 def insert_src_dst_pairs(src, dst, counter):
     key = tuple(sorted([src,dst])) #bundles src and dst together
@@ -414,7 +440,7 @@ if __name__ == "__main__":
     read_pcap = args.read #if user wishes to perform offline capture by reading 'pcap' file
     interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
     count = args.count #how many packets will be captured from live/pcap file, e.g. if count is 10, only 10 packets will be captured, then program ends
-    no_confirm = args.no_confirm
+    confirm = args.confirm
     verbose = args.verbose 
     plot = True
     if not interface:
@@ -423,21 +449,9 @@ if __name__ == "__main__":
     ##
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
-        if os.path.exists(write_pcap):
-            if no_confirm: #user doesn't want to be prompted
-                m.warn("'{write_pcap}' exists, will be overwritten",colour)
-            else:
-                if not m.warn_confirmed(f"'{write_pcap}' exists, it will be overwritten.",colour): #in case user accidently overwrites file
-                    m.info("understood, exiting...",colour)
-                    exit(0)
-        else: #try to write capture
-            try: 
-                f = open(write_pcap,"w") #tests to see if pcap can be written
-            except OSError as e:
-                m.err(f"could not write '{write_pcap}' due to '{e.strerror.lower()}'",colour)
-                exit(e.errno) # no point doing anything else if the user can't write a 'pcap' like they wanted
-            else:
-                f.close() # close file, so nothing messes up
+        match check_write_ok(write_pcap):
+            case (False, x,_):
+                exit(x)
 
 
     packet_count = 1 #count the number of packets captured
@@ -457,6 +471,7 @@ if __name__ == "__main__":
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
+
     else: #must be interface being used then
         try: 
             capture = sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
@@ -470,5 +485,19 @@ if __name__ == "__main__":
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
+            else: #this is if the user wants to save the packet capture at the end
+                print() #get rid of the Ctrl-C
+                if m.prompt("Do you wish to save the pcap?",colour):
+                    write_pcap =  input("Save it as: ")
+                    match check_write_ok(write_pcap):
+                        case (True, _, _):
+                            wrpcap(write_pcap,capture)
+                        case (False, x , errstr) if x > 0:
+                            m.warn(f"Unable to save pcap file '{write_pcap}' due to {errstr}",colour)
+
+
+
+
+                
     
             
