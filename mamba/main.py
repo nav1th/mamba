@@ -1,39 +1,81 @@
 #!/usr/bin/env python3
 import msg as m # custom messages
 import args # arguments in program
-from socket import getservbyport,getservbyname
-from colorama import Fore, Back, Style
-from scapy.main import load_layer
-from scapy.utils import hexdump
-from scapy.utils6 import in6_isaddrTeredo
-from scapy.all           import sniff, Raw,wrpcap,conf
-from scapy.layers.l2     import ARP, Ether
-from scapy.layers.inet   import IP, TCP, UDP, ICMP
-from scapy.layers.inet6  import  \
-        IPv6, \
-        ICMPv6ND_NA as NDP_NA, \
-        ICMPv6ND_RA as NDP_RA, \
-        ICMPv6ND_NS as NDP_NS, \
-        ICMPv6ND_RS as NDP_RS
-from scapy.layers.http import HTTP,HTTPRequest as HTTPReq,HTTPResponse as HTTPRes
-from scapy.layers.tls.record import TLS
-from scapy.layers.tls.record_tls13 import TLS13
-from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
-from scapy.layers.tls.cert import Cert
-from scapy.layers.dns import DNS
-from scapy.layers.dhcp import DHCP
-from scapy.layers.ntp import NTP 
-from scapy.layers.rip import RIP,RIPEntry 
-from scapy.layers.tftp import TFTP
-from scapy.contrib.igmp import IGMP
-from scapy.contrib.igmpv3 import IGMPv3
-from scapy.layers.netbios import NBNSHeader, NBNSQueryRequest, NBNSQueryResponse
-from scapy.error import Scapy_Exception
-
-load_layer("tls")
+from socket import getservbyport
 from datetime import datetime
 from collections import Counter
 import os.path
+from colorama import Fore, Back, Style
+
+#Scapy 
+from scapy.main import load_layer
+from scapy.all          import sniff, Raw,wrpcap,conf
+from scapy.error import Scapy_Exception
+
+#Scapy Ethernet & ARP
+from scapy.layers.l2    import ARP, Ether
+
+#Scapy IPv4, ICMP, TCP & UDP
+from scapy.layers.inet  import \
+    IP, \
+    TCP, \
+    UDP, \
+    ICMP
+
+#Scapy IPv6 & NDP
+from scapy.layers.inet6 import  \
+    IPv6, \
+    ICMPv6ND_NA as NDP_NA, \
+    ICMPv6ND_RA as NDP_RA, \
+    ICMPv6ND_NS as NDP_NS, \
+    ICMPv6ND_RS as NDP_RS 
+
+#Scapy RIP
+from scapy.layers.rip import \
+    RIP, \
+    RIPEntry 
+
+#Scapy HTTP
+from scapy.layers.http import \
+    HTTP, \
+    HTTPRequest as HTTPReq,\
+    HTTPResponse as HTTPRes
+#Scaoy Netbios
+from scapy.layers.netbios import \
+    NBNSHeader, \
+    NBNSQueryRequest, \
+    NBNSQueryResponse
+
+#Scapy TLS & SSL
+from scapy.layers.tls.handshake import \
+    TLSClientHello, \
+    TLSServerHello
+from scapy.layers.tls.record import  \
+    TLS, \
+    _TLSEncryptedContent, \
+    TLSAlert, \
+    TLSApplicationData, \
+    TLSChangeCipherSpec
+from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
+
+#Scapy DNS
+from scapy.layers.dns import DNS
+
+#Scapy DHCP
+from scapy.layers.dhcp import DHCP
+
+#Scapy NTP
+from scapy.layers.ntp import NTP
+
+#Scapy TFTP
+from scapy.layers.tftp import TFTP
+
+#Scapy IGMP
+from scapy.contrib.igmp import IGMP
+from scapy.contrib.igmpv3 import IGMPv3
+
+
+load_layer("tls")
 
 
 import string
@@ -110,7 +152,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             if flags & f[1]: #if certain flag is detected
                 flag_num +=  1 
                 flags_found.append(f[0])  #add it to list of flags found
-        alt_proto = [HTTP,TLS,TLS13] # these protocols are handled elsewhere in the program
+        alt_proto = [HTTP,TLS,SSL,_TLSEncryptedContent] # these protocols are handled elsewhere in the program
         if guess_service: # if user wishes for service to be detected by port
             try: 
                 sserv = getservbyport(sport)
@@ -122,15 +164,16 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 pass
         if not Raw in pkt and \
         not any(i in pkt for i in alt_proto): #Raw TCP packet wihh no app data 
-            if "RST" in flags_found:
-                pcolours+=Back.BLACK
-                pcolours+=Fore.RED
-            if  "SYN" in flags_found:
-                pcolours+=Fore.GREEN
-            if "ACK" in flags_found:
-                pcolours+=Fore.YELLOW
-            if "SYN" in flags_found and "ACK" in flags_found:
-                pcolours+=Fore.CYAN
+            if colour:
+                if "RST" in flags_found:
+                    pcolours+=Back.BLACK
+                    pcolours+=Fore.RED
+                if  "SYN" in flags_found:
+                    pcolours+=Fore.GREEN
+                if "ACK" in flags_found:
+                    pcolours+=Fore.YELLOW
+                if "SYN" in flags_found and "ACK" in flags_found:
+                    pcolours+=Fore.CYAN
                 
             protocol +=  f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
             if verbose: #if user wants more information
@@ -152,14 +195,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 protocol+=f"POP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
             elif 143 in (sport,dport):
                 protocol+=f"IMAP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-            elif 443 in (sport,dport):
-                #bug with scapy as wireshark output is different
-                protocol +=  f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
-                if verbose: #if user wants more information
-                    protocol += f"FLAGS: {flags_found} " #group of flags, else single flag
-                    protocol += f"SEQ: {seq} ACK: {ack}"
-                else:
-                    protocol +=  f"FLAGS: {flags_found}" #group of flags, else single flagpy
             else: #handles other TCP protocols and guesses the service
                 proto = None
                 if sport > dport: # lower port numbers are prioritised 
@@ -190,7 +225,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         dport = pkt[UDP].dport
         sserv = sport
         dserv = dport 
-        alt_proto = [TLS,DHCP,DNS,TFTP,NBNSHeader,NTP] # these protocols are handled elsewhere in the program
+        alt_proto = [DHCP,DNS,TFTP,NBNSHeader,NTP,TLS,SSL,_TLSEncryptedContent] # these protocols are handled elsewhere in the program
         if guess_service:
             try: 
                 sserv = getservbyport(sport)
@@ -203,6 +238,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
             protocol += f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
         elif Raw in pkt and \
         not any(i in pkt for i in alt_proto): #handles other UDP protocols and guesses the service
+            if 443 in (sport,dport):
+                if colour:
+                    pcolours += Fore.GREEN
+                protocol += f"HTTPS-UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+            else:
                 proto = None
                 if sport > dport:
                     try: 
@@ -251,18 +291,37 @@ def proc_pkt(pkt): #handles packets depending on protocol
             protocol += f"IGMPv3 - {ip_src} ==> {ip_dst} | {igmp.igmpv3types[igmp.type]}"
 
     
-    elif TLS in pkt or TLS13 in pkt:
+    elif TLS in pkt:
         if colour: 
             pcolours += f"{Fore.GREEN}"
-        if TLS in pkt:
-            tls = pkt[TLS]
-            version = tls.version
-            type = tls.mysummary().split("/")[-1].strip()
-            protocol+=f"TLSv1.3 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {type}"
+        protocol+=f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
+        if TLSAlert in pkt:
+            protocol += pkt[TLSAlert].name
+            if verbose:
+                protocol += f" {pkt[TLSAlert].level}"
+                protocol += f" {pkt[TLSAlert].desc}"
+        elif TLSClientHello in pkt:
+            protocol += pkt[TLSClientHello].name
+        elif TLSApplicationData in pkt: 
+            protocol += pkt[TLSApplicationData].name
+            payload += pkt[TLSApplicationData].data.decode('iso-8859-1')
+        elif TLSServerHello in pkt:
+            protocol += pkt[TLSServerHello].name
+        elif TLSChangeCipherSpec in pkt:
+            protocol += pkt[TLSChangeCipherSpec].name
+    elif _TLSEncryptedContent in pkt:
+        if colour: 
+            pcolours += f"{Fore.GREEN}"
+        protocol+=f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | TLS Application Data"
+    elif SSL in pkt:
+        if colour: 
+            pcolours += f"{Fore.GREEN}"
+        protocol+=f"SSLv2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
     elif HTTP in pkt: 
         if colour:
             pcolours += f"{Fore.YELLOW}" 
+            pcolours += f"{Back.BLACK}"
 
         if HTTPReq in pkt: # decode HTTP requests 
             req = pkt[HTTPReq]
@@ -322,8 +381,6 @@ def proc_pkt(pkt): #handles packets depending on protocol
             addr = entry.addr
             next = entry.nextHop
             protocol += f" | addr: {addr} mask: {mask} next: {next}"
-    elif Cert in pkt:
-        protocol+=f"RIP - {ip_src} ==> {ip_dst}"
 
     if protocol == "":
         protocol += f"UNKNOWN"
@@ -335,11 +392,14 @@ def proc_pkt(pkt): #handles packets depending on protocol
         print(f"{pcolours}",end="")
     print(f"{date} {protocol}")
 
-    if Raw in pkt and verbose:
-        try: 
-            payload += pkt[Raw].load.decode()
-        except:
-            payload += pkt[Raw].load.decode('iso-8859-1')
+    if verbose:
+        if Raw in pkt:
+            try: 
+                payload += pkt[Raw].load.decode()
+            except:
+                payload += pkt[Raw].load.decode('iso-8859-1')
+        if payload != "":
+            print(f"\t{hex_escape(payload)}")
     if colour:
         print(Style.RESET_ALL,end="") # clears formatting if any regardless of show_raw
 
@@ -392,6 +452,8 @@ if __name__ == "__main__":
            m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
         except Scapy_Exception as e:
             m.err(f"failed to sniff pcap file: {e}",colour)
+        except KeyboardInterrupt:
+            pass
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
@@ -403,6 +465,8 @@ if __name__ == "__main__":
            exit(e.errno)
         except Scapy_Exception as e:
             m.err(f"failed to sniff live capture: {e}",colour)
+        except KeyboardInterrupt:
+            pass
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
