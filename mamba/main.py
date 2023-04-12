@@ -8,16 +8,17 @@ import args # arguments in program
 from socket import getservbyport
 from datetime import datetime
 from collections import Counter
+from typing import Tuple
+from sys import platform
 import os.path
 import string
-from typing import Tuple
 
 #Colorama
 from colorama import Fore, Back, Style
 
 #Scapy 
-from scapy.main import load_layer
-from scapy.all          import sniff, Raw,wrpcap,conf
+from scapy.main  import load_layer
+from scapy.all   import sniff, Raw,wrpcap,conf,get_working_ifaces
 from scapy.error import Scapy_Exception
 
 #Scapy Ethernet & ARP
@@ -48,6 +49,7 @@ from scapy.layers.http import \
     HTTP, \
     HTTPRequest as HTTPReq,\
     HTTPResponse as HTTPRes
+
 #Scaoy Netbios
 from scapy.layers.netbios import \
     NBNSHeader, \
@@ -58,12 +60,14 @@ from scapy.layers.netbios import \
 from scapy.layers.tls.handshake import \
     TLSClientHello, \
     TLSServerHello
+
 from scapy.layers.tls.record import  \
     TLS, \
     _TLSEncryptedContent, \
     TLSAlert, \
     TLSApplicationData, \
     TLSChangeCipherSpec
+
 from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
 
 #Scapy DNS
@@ -116,7 +120,7 @@ def insert_src_dst_pairs(src, dst, counter):
 def proc_pkt(pkt): #handles packets depending on protocol
     ##possible address types
     time =  int(pkt[0].time)
-    date = datetime.utcfromtimestamp(time).strftime('%Y-%m-%d %H:%M:%S')
+    date = datetime.utcfromtimestamp(time).strftime('%d-%m-%Y %H:%M:%S')
     ether_src = None
     ether_dst = None
     ip_src = None
@@ -127,9 +131,9 @@ def proc_pkt(pkt): #handles packets depending on protocol
     #otherwise they will be the same as the TCP/UDP port numbers
     sserv = None
     dserv = None
-    pcolours = ""
-    protocol = ""
-    payload = ""
+    pcolours = "" #colours for printing 
+    protocol = "" #protocol type along with its attributes
+    payload = "" #application data payload
     
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -435,24 +439,54 @@ if __name__ == "__main__":
     
     ##args from cli
     filter = args.filter # BPF option, filters packets according to user pref
-    colour = args.colourless # determines if output is coloured, (stored as False when selected)
+    colour = args.colour # determines if output is coloured, (stored as False when selected)
     write_pcap = args.write #if user wishes to write their packet capture to a file
     read_pcap = args.read #if user wishes to perform offline capture by reading 'pcap' file
     interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
     count = args.count #how many packets will be captured from live/pcap file, e.g. if count is 10, only 10 packets will be captured, then program ends
     confirm = args.confirm
     verbose = args.verbose 
+    list_interfaces = args.list_interfaces
     plot = True
     if not interface:
         interface = conf.iface
     guess_service = args.guess_service
     ##
 
+    if list_interfaces: #lists interfaces and trys to guess their type
+        for iface, col in zip(get_working_ifaces(),[Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]):
+            iface = str(iface)
+            if colour: 
+                print(f"{col}{iface}",end=" - ")
+            else:
+                print(f"{iface}",end=" - ")
+            if platform == "linux" or platform == "linux2":
+                if iface[0:2] == "lo":
+                    print("loopback")
+                elif iface[0:2] == "en" or iface[0:3] == "eth":
+                    print("802.3 (ethernet)")
+                elif iface[0:2] == "wl":
+                    print("802.11 (wifi)")
+                elif iface[0:3] == "tun":
+                    print("tunnel")
+                elif iface[0:3] == "ppp":
+                    print("point-to-point")
+                elif iface[0:8] == "vboxnet" or iface[0:5] == "vmnet":
+                    print("virtual machine interface")
+                elif iface[0:5] == "virbr":
+                    print("bridge")
+                else:
+                    print()
+            elif platform == "win32":
+                pass
+            else:
+                print()
+        exit(0) #exit after
+
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
         match check_write_ok(write_pcap):
             case (False, x,_):
                 exit(x)
-
 
     packet_count = 1 #count the number of packets captured
     pairs_ipv4 = Counter() 
@@ -471,7 +505,6 @@ if __name__ == "__main__":
         else:
             if write_pcap: 
                 wrpcap(write_pcap,capture)
-
     else: #must be interface being used then
         try: 
             capture = sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
@@ -494,10 +527,3 @@ if __name__ == "__main__":
                             wrpcap(write_pcap,capture)
                         case (False, x , errstr) if x > 0:
                             m.warn(f"Unable to save pcap file '{write_pcap}' due to {errstr}",colour)
-
-
-
-
-                
-    
-            
