@@ -44,5 +44,3 @@ def prompt(content: str, colour: bool) -> bool:
     if user_input == "y":
         return True
     return False
-        
-
