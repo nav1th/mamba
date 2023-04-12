@@ -1,6 +1,5 @@
-from colorama import Back, Style, Fore 
+from colorama import Style, Fore 
 import sys
-import json
 
 def err(content: str, colour: bool):
     if colour:
@@ -33,4 +32,17 @@ def warn_confirmed(content: str, colour: bool) -> bool:
     if user_input == "y":
         return True
     return False
+
+def prompt(content: str, colour: bool) -> bool:
+    if colour:
+        print(Fore.BLUE + Style.BRIGHT + "[*]" + Style.RESET_ALL + f" {content}", end=" ")
+        user_input = input(f"[{Fore.GREEN}y{Style.RESET_ALL}/{Fore.RED}N{Style.RESET_ALL}]: ")
+    else: 
+        print("prompt: {content}",end=" ")
+        user_input = input(f"[y/N]: ")
+
+    if user_input == "y":
+        return True
+    return False
+        
 
