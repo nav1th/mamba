@@ -90,8 +90,8 @@ from scapy.contrib.igmpv3 import IGMPv3
 load_layer("tls")
 
 
-printable = string.ascii_letters + string.digits + string.punctuation + ' '
-def hex_escape(s): #for reading reading encrypting 
+def hex_escape(s): #for reading bytes, usually from encrypted content 
+    printable = string.ascii_letters + string.digits + string.punctuation + ' '
     return ''.join(c if c in printable else r'\x{0:02x}'.format(ord(c)) for c in s)
 
 def check_write_ok(path) -> Tuple[bool,int,str]: #checks if writing to pcap is okay
@@ -149,14 +149,14 @@ def proc_pkt(pkt): #handles packets depending on protocol
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
         insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv6)
-        if NDP_RS in pkt: #discover routers on Ipv6 network with all routers multicast ff02::2
-            protocol += f"NDP - Router solication message | {ip_src} ==> {ip_dst}"
+        if NDP_RS in pkt: #router soliciation
+           protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
         if NDP_NA in pkt: #neighbour advertisement
-           protocol += f"NDP - Neighbour advertisement | {ip_src} ==> {ip_dst}"
+           protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour advertisement"
         if NDP_RA in pkt: #router advertisement 
-           protocol += f"NDP - Router advertisement | {ip_src} ==> {ip_dst}"
+           protocol += f"NDP - {ip_src} ==> {ip_dst} | Router advertisement"
         if NDP_NS in pkt: #neighbour solicitation
-           protocol += f"NDP - Neighbour solicitation | {ip_src} ==> {ip_dst}"
+           protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour solicitation"
 
     if TCP in pkt: #any TCP data in packet
         sport = pkt[TCP].sport
