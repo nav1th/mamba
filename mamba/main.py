@@ -140,10 +140,18 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if IP in pkt: # grab ipv4 info if any
         ip_src = pkt[IP].src
         ip_dst = pkt[IP].dst
+        if ls_convos:
+            key = tuple(sorted([ip_src, ip_dst]))
+            pairs_ipv4.update([key])
+            number = sum(pairs_ipv4.values())
        
     if IPv6 in pkt: # grab ipv6 info if any
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
+        if ls_convos:
+            key = tuple(sorted([ip_src, ip_dst]))
+            pairs_ipv6.update([key])
+            number = sum(pairs_ipv6.values())
 
         if NDP_RS in pkt: #router soliciation
            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
@@ -198,11 +206,11 @@ def proc_pkt(pkt): #handles packets depending on protocol
                 if "RST" in flags_found:
                     pcolours+=Back.BLACK
                     pcolours+=Fore.RED
-                if  "SYN" in flags_found:
+                elif  "SYN" in flags_found:
                     pcolours+=Fore.GREEN
-                if "ACK" in flags_found:
+                elif "ACK" in flags_found:
                     pcolours+=Fore.YELLOW
-                if "SYN" in flags_found and "ACK" in flags_found:
+                elif "SYN" in flags_found and "ACK" in flags_found:
                     pcolours+=Fore.CYAN
                 
             protocol +=  f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
@@ -349,7 +357,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
         protocol+=f"SSLv2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
     elif HTTP in pkt: 
-        if colour:
+        if colour and Raw in pkt:
             pcolours += f"{Fore.YELLOW}" 
             pcolours += f"{Back.BLACK}"
 
@@ -541,5 +549,17 @@ if __name__ == "__main__":
                         case (False, x , errstr) if x > 0:
                             m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
     if ls_convos:
-        print("\n".join(f"{f'{key[0]} <--> {key[1]}'}: {count}" for key, count in pairs_l2.items()))
+        convos = "\n"
+        convos += "###layer 2###\n"
+        convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_l2.items())
+        convos += "\n\n\n"
+        if pairs_ipv4 or pairs_ipv6:
+            convos += "###layer 3###\n"
+            if pairs_ipv4:
+                convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_ipv4.items())
+            if pairs_ipv6:
+                convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_ipv6.items())
+        print(convos)
+
+
 
