@@ -131,6 +131,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
     pcolours = "" #colours for printing 
     protocol = "" #protocol type along with its attributes
     payload = "" #application data payload
+    number: int
     
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src 
@@ -152,6 +153,10 @@ def proc_pkt(pkt): #handles packets depending on protocol
            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router advertisement"
         if NDP_NS in pkt: #neighbour solicitation
            protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour solicitation"
+
+    key = tuple(sorted([pkt[0].src, pkt[0].dst]))
+    pairs_l2.update([key])
+    number = sum(pairs_l2.values())
 
     if TCP in pkt: #any TCP data in packet
         sport = pkt[TCP].sport
@@ -415,7 +420,7 @@ def proc_pkt(pkt): #handles packets depending on protocol
             protocol += f" - {ether_src} ==> {ether_dst}"
     if pcolours != "":
         print(f"{pcolours}",end="")
-    print(f"{date} {protocol}")
+    print(f"#{number} {date} {protocol}")
 
     if verbose:
         if Raw in pkt:
@@ -435,51 +440,54 @@ if __name__ == "__main__":
     ##args from cli
     filter = args.filter # BPF option, filters packets according to user pref
     colour = args.colour # determines if output is coloured, (stored as False when selected)
-    write_pcap = args.write #if user wishes to write their packet capture to a file
-    read_pcap = args.read #if user wishes to perform offline capture by reading 'pcap' file
-    interface = args.interface #if user desires to select interface, otherwise first available will be selected for them
+    wpcap = args.write #if user wishes to write their packet capture to a file
+    rpcap = args.read #if user wishes to perform offline capture by reading 'pcap' file
+    iface = args.iface #if user desires to select interface, otherwise first available will be selected for them
     count = args.count #how many packets will be captured from live/pcap file, e.g. if count is 10, only 10 packets will be captured, then program ends
     confirm = args.confirm
     verbose = args.verbose 
-    list_interfaces = args.list_interfaces
-    plot = True
-    if not interface:
-        interface = conf.iface
+    ls_ifaces = args.ls_ifaces
+    ls_convos  = args.ls_convos
+
+    if not iface:
+        iface = conf.iface
     guess_service = args.guess_service
+
+    col_list = [Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]
     ##
-    if list_interfaces: #lists interfaces and trys to guess their type
-        for iface, col in zip(get_working_ifaces(),[Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]):
+    if ls_ifaces: #lists interfaces and trys to guess their type
+        for iface, col in zip(get_working_ifaces(),col_list):
             iface_str = str(iface)
             if platform == "linux" or platform == "linux2":
                 if iface_str[0:2] == "lo":
-                    iface_str += (" - loopback")
+                    iface_str += " - loopback"
                 elif iface_str[0:2] == "en" or iface_str[0:3] == "eth":
-                    iface_str += (" - 802.3 (ethernet)")
+                    iface_str += " - 802.3 (ethernet)"
                 elif iface_str[0:2] == "wl":
-                    iface_str += (" - 802.11 (wifi)")
+                    iface_str += " - 802.11 (wifi)"
                 elif iface_str[0:3] == "tun":
-                    iface_str += (" - tunnel")
+                    iface_str += " - tunnel"
                 elif iface_str[0:3] == "ppp":
-                    iface_str +=(" - point-to-point")
+                    iface_str +=" - point-to-point"
                 elif iface_str[0:8] == "vboxnet" or iface_str[0:5] == "vmnet":
-                    iface_str += (" - virtual machine interface")
+                    iface_str += " - virtual machine interface"
                 elif iface_str[0:5] == "virbr":
-                    iface_str += (" - bridge")
+                    iface_str += " - bridge"
             elif platform == "darwin": #i dont have a mac, so unfortunately i can't test this
                 if iface_str == "lo0":
-                    iface_str += (" - loopback")
+                    iface_str += " - loopback"
                 elif iface_str == "en0":
-                    iface_str += (" - 802.11 (wifi)")
+                    iface_str += " - 802.11 (wifi)"
                 elif iface_str == "en1" or iface_str == "en2":
-                    iface_str += (" - thunderbolt")
+                    iface_str += " - thunderbolt"
                 elif iface_str == "fw":
-                    iface_str += (" - firewire")
+                    iface_str += " - firewire"
                 elif iface_str == "stf0":
-                    iface_str +=(" - 6to4 tun")
+                    iface_str +=" - 6to4 tun"
                 elif iface_str == "gif0":
-                    iface_str += (" - tun")
+                    iface_str += " - tun"
                 elif iface_str == "awdl0":
-                    iface_str += (" - apple wireless direct link")
+                    iface_str += " - apple wireless direct link"
             else:
                 pass
             if colour:
@@ -488,45 +496,50 @@ if __name__ == "__main__":
                 print(f"{iface_str}")
         exit(0) #exit after
 
-    if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
-        match check_write_ok(write_pcap):
+    if wpcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
+        match check_write_ok(wpcap):
             case (False, x,_):
                 exit(x)
 
-    packet_count = Counter()
+    pairs_l2 = Counter()
+    pairs_ipv4 = Counter()
+    pairs_ipv6 = Counter()
 
 
-    if read_pcap:
+    if rpcap:
         try: 
-            capture = sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count)  
+            capture = sniff(prn=proc_pkt,offline=rpcap,filter=args.filter,count=args.count)  
         except OSError as e:
-           m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
+           m.err(f"failed to read from '{wpcap}' due to '{e.strerror.lower()}'",colour)
         except Scapy_Exception as e:
             m.err(f"failed to sniff pcap file: {e}",colour)
         except KeyboardInterrupt:
             pass
         else:
-            if write_pcap: 
-                wrpcap(write_pcap,capture)
+            if wpcap: 
+                wrpcap(wpcap,capture)
     else: #must be interface being used then
         try: 
-            capture = sniff(prn=proc_pkt,iface=interface,filter=args.filter,count=args.count)
+            capture = sniff(prn=proc_pkt,iface=iface,filter=args.filter,count=args.count)
         except OSError as e:
-           m.err(f"failed to sniff on {interface} due to '{e.strerror.lower()}'",colour)
+           m.err(f"failed to sniff on {iface} due to '{e.strerror.lower()}'",colour)
            exit(e.errno)
         except Scapy_Exception as e:
             m.err(f"failed to sniff live capture: {e}",colour)
         except KeyboardInterrupt:
             pass
         else:
-            if write_pcap: 
-                wrpcap(write_pcap,capture)
+            if wpcap: 
+                wrpcap(wpcap,capture)
             else: #this is if the user wants to save the packet capture at the end
                 print() #get rid of the Ctrl-C
                 if m.prompt("Do you wish to save the pcap?",colour):
-                    write_pcap =  input("Save it as: ")
-                    match check_write_ok(write_pcap):
+                    wpcap =  input("Save it as: ")
+                    match check_write_ok(wpcap):
                         case (True, _, _):
-                            wrpcap(write_pcap,capture)
+                            wrpcap(wpcap,capture)
                         case (False, x , errstr) if x > 0:
-                            m.warn(f"Unable to save pcap file '{write_pcap}' due to {errstr}",colour)
+                            m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
+    if ls_convos:
+        print("\n".join(f"{f'{key[0]} <--> {key[1]}'}: {count}" for key, count in pairs_l2.items()))
+
