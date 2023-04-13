@@ -113,9 +113,6 @@ def check_write_ok(path) -> Tuple[bool,int,str]: #checks if writing to pcap is o
             f.close() # close file, so nothing messes up
             return (True, 0,"")
 
-def insert_src_dst_pairs(src, dst, counter):
-    key = tuple(sorted([src,dst])) #bundles src and dst together
-    counter.update(key) #updates amount of pairs 
 
 def proc_pkt(pkt): #handles packets depending on protocol
     ##possible address types
@@ -138,17 +135,15 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src 
         ether_dst = pkt[Ether].dst  
-        insert_src_dst_pairs(ether_src,ether_dst,pairs_ether)
         
     if IP in pkt: # grab ipv4 info if any
         ip_src = pkt[IP].src
         ip_dst = pkt[IP].dst
-        insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv4)
        
     if IPv6 in pkt: # grab ipv6 info if any
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
-        insert_src_dst_pairs(ip_src,ip_dst,pairs_ipv6)
+
         if NDP_RS in pkt: #router soliciation
            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
         if NDP_NA in pkt: #neighbour advertisement
@@ -456,30 +451,41 @@ if __name__ == "__main__":
         for iface, col in zip(get_working_ifaces(),[Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]):
             iface_str = str(iface)
             if platform == "linux" or platform == "linux2":
-                if iface[0:2] == "lo":
+                if iface_str[0:2] == "lo":
                     iface_str += (" - loopback")
-                elif iface[0:2] == "en" or iface[0:3] == "eth":
+                elif iface_str[0:2] == "en" or iface_str[0:3] == "eth":
                     iface_str += (" - 802.3 (ethernet)")
-                elif iface[0:2] == "wl":
+                elif iface_str[0:2] == "wl":
                     iface_str += (" - 802.11 (wifi)")
-                elif iface[0:3] == "tun":
+                elif iface_str[0:3] == "tun":
                     iface_str += (" - tunnel")
-                elif iface[0:3] == "ppp":
+                elif iface_str[0:3] == "ppp":
                     iface_str +=(" - point-to-point")
-                elif iface[0:8] == "vboxnet" or iface[0:5] == "vmnet":
+                elif iface_str[0:8] == "vboxnet" or iface_str[0:5] == "vmnet":
                     iface_str += (" - virtual machine interface")
-                elif iface[0:5] == "virbr":
+                elif iface_str[0:5] == "virbr":
                     iface_str += (" - bridge")
-            elif platform == "win32":
-                pass
+            elif platform == "darwin": #i dont have a mac, so unfortunately i can't test this
+                if iface_str == "lo0":
+                    iface_str += (" - loopback")
+                elif iface_str == "en0":
+                    iface_str += (" - 802.11 (wifi)")
+                elif iface_str == "en1" or iface_str == "en2":
+                    iface_str += (" - thunderbolt")
+                elif iface_str == "fw":
+                    iface_str += (" - firewire")
+                elif iface_str == "stf0":
+                    iface_str +=(" - 6to4 tun")
+                elif iface_str == "gif0":
+                    iface_str += (" - tun")
+                elif iface_str == "awdl0":
+                    iface_str += (" - apple wireless direct link")
             else:
                 pass
             if colour:
                 print(f"{col}{iface_str}")
             else:
                 print(f"{iface_str}")
-        from time import sleep
-        sleep(10)
         exit(0) #exit after
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
@@ -487,14 +493,12 @@ if __name__ == "__main__":
             case (False, x,_):
                 exit(x)
 
-    packet_count = 1 #count the number of packets captured
-    pairs_ipv4 = Counter() 
-    pairs_ipv6 = Counter()
-    pairs_ether = Counter()
+    packet_count = Counter()
+
 
     if read_pcap:
         try: 
-            capture = sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count) 
+            capture = sniff(prn=proc_pkt,offline=read_pcap,filter=args.filter,count=args.count)  
         except OSError as e:
            m.err(f"failed to read from '{write_pcap}' due to '{e.strerror.lower()}'",colour)
         except Scapy_Exception as e:
