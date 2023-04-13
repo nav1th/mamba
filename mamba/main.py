@@ -452,35 +452,34 @@ if __name__ == "__main__":
         interface = conf.iface
     guess_service = args.guess_service
     ##
-
     if list_interfaces: #lists interfaces and trys to guess their type
         for iface, col in zip(get_working_ifaces(),[Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]):
-            iface = str(iface)
-            if colour: 
-                print(f"{col}{iface}",end=" - ")
-            else:
-                print(f"{iface}",end=" - ")
+            iface_str = str(iface)
             if platform == "linux" or platform == "linux2":
                 if iface[0:2] == "lo":
-                    print("loopback")
+                    iface_str += (" - loopback")
                 elif iface[0:2] == "en" or iface[0:3] == "eth":
-                    print("802.3 (ethernet)")
+                    iface_str += (" - 802.3 (ethernet)")
                 elif iface[0:2] == "wl":
-                    print("802.11 (wifi)")
+                    iface_str += (" - 802.11 (wifi)")
                 elif iface[0:3] == "tun":
-                    print("tunnel")
+                    iface_str += (" - tunnel")
                 elif iface[0:3] == "ppp":
-                    print("point-to-point")
+                    iface_str +=(" - point-to-point")
                 elif iface[0:8] == "vboxnet" or iface[0:5] == "vmnet":
-                    print("virtual machine interface")
+                    iface_str += (" - virtual machine interface")
                 elif iface[0:5] == "virbr":
-                    print("bridge")
-                else:
-                    print()
+                    iface_str += (" - bridge")
             elif platform == "win32":
                 pass
             else:
-                print()
+                pass
+            if colour:
+                print(f"{col}{iface_str}")
+            else:
+                print(f"{iface_str}")
+        from time import sleep
+        sleep(10)
         exit(0) #exit after
 
     if write_pcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
