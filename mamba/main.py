@@ -552,13 +552,14 @@ if __name__ == "__main__":
                 wrpcap(wpcap,capture)
             else: #this is if the user wants to save the packet capture at the end
                 print() #get rid of the Ctrl-C
-                if m.prompt("Do you wish to save the pcap?",colour):
-                    wpcap =  input("Save it as: ")
-                    match check_write_ok(wpcap):
-                        case (True, _, _):
-                            wrpcap(wpcap,capture)
-                        case (False, x , errstr) if x > 0:
-                            m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
+                if confirm and not m.prompt("Do you wish to save the pcap?",colour): #wont prompt if user said no
+                    exit(0)
+                wpcap =  input("Save it as: ")
+                match check_write_ok(wpcap):
+                    case (True, _, _):
+                        wrpcap(wpcap,capture)
+                    case (False, x , errstr) if x > 0:
+                        m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
     if ls_convos: ##list conversations between two different addresses at the end
         #first part is for layer 1 which will always be there
         convos = "\n###layer 1###\n"
