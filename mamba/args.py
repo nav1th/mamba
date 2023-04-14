@@ -20,6 +20,7 @@ def grab_args():
     parser.add_argument("--guess-service",dest="guess_service",required=False,action="store_true",help="Try to guess which TCP/UDP service, replacing the port number")
     parser.add_argument("--list-interfaces", dest="ls_ifaces",required=False,action="store_true",help="List interfaces available to the user")
     parser.add_argument("--list-conversations",dest="ls_convos",required=False,action="store_true",help="List conversations between different addresses")
+    parser.add_argument("--no-save",dest="save",required=False,action="store_false",help="Disable save prompt at the end of live capture")
     args = parser.parse_args()
     if args.iface and args.read:
         m.err("can't read from 'pcap' file and listen on interface at the same time",args.colour)
