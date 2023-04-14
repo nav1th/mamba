@@ -97,6 +97,9 @@ def grab_args():
         help="Disable save prompt at the end of live capture",
     )
     args = parser.parse_args()
+
+
+    # incompatible arguments
     if args.iface and args.read:
         m.err(
             "can't read from 'pcap' file and listen on interface at the same time",
