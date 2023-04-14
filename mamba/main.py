@@ -9,6 +9,7 @@ from socket import getservbyport
 from datetime import datetime
 from collections import Counter
 from typing import Tuple
+from itertools import cycle
 from sys import platform
 import os.path
 import string
@@ -461,10 +462,11 @@ if __name__ == "__main__":
         iface = conf.iface
     guess_service = args.guess_service
 
-    col_list = [Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.RED,Fore.MAGENTA,Fore.CYAN]
+    col_ls = [Fore.GREEN,Fore.YELLOW,Fore.BLUE,Fore.LIGHTRED_EX,Fore.MAGENTA,Fore.CYAN]
+    cy_col_ls = cycle(col_ls)
     ##
     if ls_ifaces: #lists interfaces and trys to guess their type
-        for iface, col in zip(get_working_ifaces(),col_list):
+        for iface, col in zip(get_working_ifaces(),col_ls):
             iface_str = str(iface)
             if platform == "linux" or platform == "linux2":
                 if iface_str[0:2] == "lo":
@@ -548,17 +550,34 @@ if __name__ == "__main__":
                             wrpcap(wpcap,capture)
                         case (False, x , errstr) if x > 0:
                             m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
-    if ls_convos:
-        convos = "\n"
-        convos += "###layer 2###\n"
-        convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_l2.items())
+    if ls_convos: ##list conversations between two different addresses at the end
+        convos = "\n###layer 2###\n"
+        if colour:
+            for pair_l2, col in zip(pairs_l2.items(),col_ls): 
+                addr = pair_l2[0]
+                count = pair_l2[1]
+                convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+            else:
+                convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_l2.items())
         convos += "\n\n\n"
         if pairs_ipv4 or pairs_ipv6:
             convos += "###layer 3###\n"
             if pairs_ipv4:
-                convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_ipv4.items())
+                if colour:
+                    for pair_ipv4, col in zip(pairs_ipv4.items(),col_ls): 
+                        addr = pair_ipv4[0]
+                        count = pair_ipv4[1]
+                        convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                else:
+                    convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_ipv4.items())
             if pairs_ipv6:
-                convos +="\n".join(f"{f'{key[0]} <==> {key[1]}'}: {count}" for key, count in pairs_ipv6.items())
+                if colour:
+                    for pair_ipv6, col in zip(pairs_ipv6.items(),col_ls): 
+                        addr = pair_ipv6[0]
+                        count = pair_ipv6[1]
+                        convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                else:
+                    convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_ipv6.items())
         print(convos)
 
 
