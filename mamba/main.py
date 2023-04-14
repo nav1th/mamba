@@ -560,6 +560,7 @@ if __name__ == "__main__":
                         case (False, x , errstr) if x > 0:
                             m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
     if ls_convos: ##list conversations between two different addresses at the end
+        #first part is for layer 1 which will always be there
         convos = "\n###layer 1###\n"
         if colour:
             for addr, count in pairs_l2.items(): 
@@ -567,7 +568,7 @@ if __name__ == "__main__":
         else:
             for addr, count in pairs_l2.items():
                 convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
-        if pairs_ipv4 or pairs_ipv6: #there may or may not be stuff going on at layer 2
+        if pairs_ipv4 or pairs_ipv6: #there may or may not be stuff going on no higher than layer 2
             convos += "\n\n\n###layer 2###\n"
             if pairs_ipv4:
                 if colour:
@@ -583,16 +584,16 @@ if __name__ == "__main__":
                 else:
                     for addr, count in pairs_ipv6.items():
                         convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
-        if pairs_tcp or pairs_udp: #there may or may not be stuff going on at layer 2
+        if pairs_tcp or pairs_udp: #there may or may not be stuff going on at layer 3
             convos += "\n\n\n###layer 3###\n"
-            if pairs_tcp:
+            if pairs_tcp: #if theres tcp conversations
                 if colour:
                     for addr, count in pairs_tcp.items(): 
                         convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
                 else:
                     for addr, count in pairs_tcp.items():
                         convos += f"{addr[0]} <==> {addr[1]}: {count}\n"
-            if pairs_udp:
+            if pairs_udp: #if theres udp conversations
                 if colour:
                     for addr, count in pairs_udp.items(): 
                         convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
