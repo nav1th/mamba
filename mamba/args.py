@@ -26,4 +26,5 @@ def grab_args():
         exit(1)
     if args.ls_ifaces and (args.iface or args.read or args.ls_convos):
         m.err("can't capture from pcaps or interfaces, while listing interfaces",args.colour)
+        exit(1)
     return args
