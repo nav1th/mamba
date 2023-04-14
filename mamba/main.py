@@ -141,18 +141,16 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if IP in pkt: # grab ipv4 info if any
         ip_src = pkt[IP].src
         ip_dst = pkt[IP].dst
-        if ls_convos:
+        if ls_convos and not TCP in pkt and not UDP in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv4.update([key])
-            number = sum(pairs_ipv4.values())
        
     if IPv6 in pkt: # grab ipv6 info if any
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
-        if ls_convos:
+        if ls_convos and not TCP in pkt and not UDP in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
-            number = sum(pairs_ipv6.values())
 
         if NDP_RS in pkt: #router soliciation
            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
@@ -170,6 +168,12 @@ def proc_pkt(pkt): #handles packets depending on protocol
     if TCP in pkt: #any TCP data in packet
         sport = pkt[TCP].sport
         dport = pkt[TCP].dport
+        if ls_convos:
+            key = tuple(sorted([f"{ip_src}:{sport}-tcp", f"{ip_dst}:{dport}-tcp"]))
+            pairs_tcp.update([key])
+
+        
+
         sserv = sport
         dserv = dport
         flags = pkt[TCP].flags
@@ -262,6 +266,8 @@ def proc_pkt(pkt): #handles packets depending on protocol
     elif UDP in pkt:
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
+        key = tuple(sorted([f"{ip_src}:{sport}-udp", f"{ip_dst}:{dport}-udp"]))
+        pairs_udp.update([key])
         sserv = sport
         dserv = dport 
         alt_proto = [DHCP,DNS,TFTP,NBNSHeader,NTP,TLS,SSL,_TLSEncryptedContent] # these protocols are handled elsewhere in the program
@@ -515,6 +521,8 @@ if __name__ == "__main__":
     pairs_l2 = Counter()
     pairs_ipv4 = Counter()
     pairs_ipv6 = Counter()
+    pairs_tcp = Counter()
+    pairs_udp = Counter()
 
 
     if rpcap:
@@ -552,16 +560,15 @@ if __name__ == "__main__":
                         case (False, x , errstr) if x > 0:
                             m.warn(f"Unable to save pcap file '{wpcap}' due to {errstr}",colour)
     if ls_convos: ##list conversations between two different addresses at the end
-        convos = "\n###layer 2###\n"
+        convos = "\n###layer 1###\n"
         if colour:
             for addr, count in pairs_l2.items(): 
                 convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
         else:
             for addr, count in pairs_l2.items():
                 convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
-        convos += "\n\n\n"
         if pairs_ipv4 or pairs_ipv6: #there may or may not be stuff going on at layer 2
-            convos += "###layer 3###\n"
+            convos += "\n\n\n###layer 2###\n"
             if pairs_ipv4:
                 if colour:
                     for addr, count in pairs_ipv4.items(): 
@@ -571,12 +578,27 @@ if __name__ == "__main__":
                         convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
             if pairs_ipv6:
                 if colour:
-                    for pair_ipv6, col in zip(pairs_ipv6.items(),col_ls): 
-                        addr = pair_ipv6[0]
-                        count = pair_ipv6[1]
-                        convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                    for addr, count in pairs_ipv6.items(): 
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
                 else:
-                    convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_ipv6.items())
+                    for addr, count in pairs_ipv6.items():
+                        convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
+        if pairs_tcp or pairs_udp: #there may or may not be stuff going on at layer 2
+            convos += "\n\n\n###layer 3###\n"
+            if pairs_tcp:
+                if colour:
+                    for addr, count in pairs_tcp.items(): 
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
+                else:
+                    for addr, count in pairs_tcp.items():
+                        convos += f"{addr[0]} <==> {addr[1]}: {count}\n"
+            if pairs_udp:
+                if colour:
+                    for addr, count in pairs_udp.items(): 
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
+                else:
+                    for addr, count in pairs_udp.items():
+                        convos += f"{addr[0]} <==> {addr[1]}: {count}\n"
         print(convos)
 
 
