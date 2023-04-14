@@ -466,9 +466,10 @@ if __name__ == "__main__":
     cy_col_ls = cycle(col_ls)
     ##
     if ls_ifaces: #lists interfaces and trys to guess their type
-        for iface, col in zip(get_working_ifaces(),col_ls):
+        for iface in get_working_ifaces():
             iface_str = str(iface)
-            if platform == "linux" or platform == "linux2":
+            if platform == "linux" or platform == "linux2" \
+            or platform == "openbsd" or platform == "freebsd":
                 if iface_str[0:2] == "lo":
                     iface_str += " - loopback"
                 elif iface_str[0:2] == "en" or iface_str[0:3] == "eth":
@@ -499,12 +500,12 @@ if __name__ == "__main__":
                 elif iface_str == "awdl0":
                     iface_str += " - apple wireless direct link"
             else:
-                pass
+                pass 
             if colour:
-                print(f"{col}{iface_str}")
+                print(f"{next(cy_col_ls)}{iface_str}{Style.RESET_ALL}")
             else:
                 print(f"{iface_str}")
-        exit(0) #exit after
+        exit(0) 
 
     if wpcap: #checks beforehand to avoid packet capture and discovering at the end you can't write the file
         match check_write_ok(wpcap):
@@ -553,23 +554,21 @@ if __name__ == "__main__":
     if ls_convos: ##list conversations between two different addresses at the end
         convos = "\n###layer 2###\n"
         if colour:
-            for pair_l2, col in zip(pairs_l2.items(),col_ls): 
-                addr = pair_l2[0]
-                count = pair_l2[1]
-                convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
-            else:
-                convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_l2.items())
+            for addr, count in pairs_l2.items(): 
+                convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+        else:
+            for addr, count in pairs_l2.items():
+                convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
         convos += "\n\n\n"
-        if pairs_ipv4 or pairs_ipv6:
+        if pairs_ipv4 or pairs_ipv6: #there may or may not be stuff going on at layer 2
             convos += "###layer 3###\n"
             if pairs_ipv4:
                 if colour:
-                    for pair_ipv4, col in zip(pairs_ipv4.items(),col_ls): 
-                        addr = pair_ipv4[0]
-                        count = pair_ipv4[1]
-                        convos += f"{col}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                    for addr, count in pairs_ipv4.items(): 
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
                 else:
-                    convos +="\n".join(f"{f'{addr[0]} <==> {addr[1]}'}: {count}" for addr, count in pairs_ipv4.items())
+                    for addr, count in pairs_ipv4.items():
+                        convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
             if pairs_ipv6:
                 if colour:
                     for pair_ipv6, col in zip(pairs_ipv6.items(),col_ls): 
