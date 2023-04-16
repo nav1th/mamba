@@ -500,7 +500,13 @@ if __name__ == "__main__":
     ls_convos = args.ls_convos
 
     if not iface:
-        iface = conf.iface
+        iface = conf.iface  # chooses the first suitable interface according to Scapy
+    else:  # checks if the interface user selected is a working interface
+        good_interfaces = [str(iface) for iface in get_working_ifaces()]
+        if iface not in good_interfaces:
+            m.err("failed to select working interface", colour)
+            exit(2)
+
     guess_service = args.guess_service
 
     col_ls = [
