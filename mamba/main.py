@@ -132,14 +132,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     if IP in pkt:  # grab ipv4 info if any
         ip_src = pkt[IP].src
         ip_dst = pkt[IP].dst
-        if ls_convos and not TCP in pkt and not UDP in pkt:
+        if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv4.update([key])
 
     if IPv6 in pkt:  # grab ipv6 info if any
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
-        if ls_convos and not TCP in pkt and not UDP in pkt:
+        if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
 
@@ -199,7 +199,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if not Raw in pkt and not any(
+        if Raw not in pkt and not any(
             i in pkt for i in alt_proto
         ):  # Raw TCP packet wihh no app data
             if colour:
@@ -290,7 +290,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if not Raw in pkt and not any(
+        if Raw not in pkt and not any(
             i in pkt for i in alt_proto
         ):  # raw UDP packets with no app data
             protocol += f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
@@ -346,7 +346,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
     elif ICMP in pkt:
         icmp = pkt[ICMP]
-        protocol += f"ICMP - {ip_src} ==> {ip_dst} | {icmp.mysummary()}"
+        protocol += f"ICMP - {ip_src} ==> {ip_dst} | {icmp.sprintf('%ICMP.type%')}"
 
     elif IGMP in pkt or IGMPv3 in pkt:
         if IGMP in pkt:
@@ -502,8 +502,9 @@ if __name__ == "__main__":
     if not iface:
         iface = conf.iface  # chooses the first suitable interface according to Scapy
     else:  # checks if the interface user selected is a working interface
-        good_interfaces = [str(iface) for iface in get_working_ifaces()]
-        if iface not in good_interfaces:
+        if iface not in map(
+            str, get_working_ifaces()
+        ):  # if the iface user specifiices isn't a working interface detected by Scapy
             m.err("failed to select working interface", colour)
             exit(2)
 
@@ -520,59 +521,58 @@ if __name__ == "__main__":
     cy_col_ls = cycle(col_ls)
     ##
     if ls_ifaces:  # lists interfaces and trys to guess their type
-        for iface in get_working_ifaces():
-            iface_str = str(iface)
+        for iface in map(str, get_working_ifaces()):
             if (
                 platform == "linux"
                 or platform == "linux2"
                 or platform == "openbsd"
                 or platform == "freebsd"
             ):
-                if iface_str[0:2] == "lo":
-                    iface_str += " - loopback"
-                elif iface_str[0:2] == "en" or iface_str[0:3] == "eth":
-                    iface_str += " - 802.3 (ethernet)"
-                elif iface_str[0:2] == "wl":
-                    iface_str += " - 802.11 (wifi)"
-                elif iface_str[0:3] == "tun":
-                    iface_str += " - tunnel"
-                elif iface_str[0:3] == "ppp":
-                    iface_str += " - point-to-point"
-                elif iface_str[0:8] == "vboxnet" or iface_str[0:5] == "vmnet":
-                    iface_str += " - virtual machine interface"
-                elif iface_str[0:5] == "virbr":
-                    iface_str += " - bridge"
+                if iface[0:2] == "lo":
+                    iface += " - loopback"
+                elif iface[0:2] == "en" or iface[0:3] == "eth":
+                    iface += " - 802.3 (ethernet)"
+                elif iface[0:2] == "wl":
+                    iface += " - 802.11 (wifi)"
+                elif iface[0:3] == "tun":
+                    iface += " - tunnel"
+                elif iface[0:3] == "ppp":
+                    iface += " - point-to-point"
+                elif iface[0:8] == "vboxnet" or iface[0:5] == "vmnet":
+                    iface += " - virtual machine interface"
+                elif iface[0:5] == "virbr":
+                    iface += " - bridge"
             elif (
                 platform == "darwin"
             ):  # i dont have a mac, so unfortunately i can't test this
-                if iface_str == "lo0":
-                    iface_str += " - loopback"
-                elif iface_str == "en0":
-                    iface_str += " - 802.11 (wifi)"
-                elif iface_str == "en1" or iface_str == "en2":
-                    iface_str += " - thunderbolt"
-                elif iface_str == "fw":
-                    iface_str += " - firewire"
-                elif iface_str == "stf0":
-                    iface_str += " - 6to4 tun"
-                elif iface_str == "gif0":
-                    iface_str += " - tun"
-                elif iface_str == "awdl0":
-                    iface_str += " - apple wireless direct link"
+                if iface == "lo0":
+                    iface += " - loopback"
+                elif iface == "en0":
+                    iface += " - 802.11 (wifi)"
+                elif iface == "en1" or iface == "en2":
+                    iface += " - thunderbolt"
+                elif iface == "fw":
+                    iface += " - firewire"
+                elif iface == "stf0":
+                    iface += " - 6to4 tun"
+                elif iface == "gif0":
+                    iface += " - tun"
+                elif iface == "awdl0":
+                    iface += " - apple wireless direct link"
             else:
                 pass
             if colour:
-                print(f"{next(cy_col_ls)}{iface_str}{Style.RESET_ALL}")
+                print(f"{next(cy_col_ls)}{iface}{Style.RESET_ALL}")
             else:
-                print(f"{iface_str}")
+                print(f"{iface}")
         exit(0)
 
     if (
         wpcap
     ):  # checks beforehand to avoid packet capture and discovering at the end you can't write the file
         match check_write_ok(wpcap):
-            case (False, x, _):
-                exit(x)
+            case (False, retval, _):
+                exit(retval)
 
     pairs_l2 = Counter()
     pairs_ipv4 = Counter()
@@ -621,7 +621,11 @@ if __name__ == "__main__":
                 match check_write_ok(wpcap):
                     case (True, _, _):
                         wrpcap(wpcap, capture)
-                    case (False, x, errstr) if x > 0:
+                    case (
+                        False,
+                        retval,
+                        errstr,
+                    ) if retval > 0:  # theres an error as return value more than 0
                         m.warn(
                             f"Unable to save pcap file '{wpcap}' due to {errstr}",
                             colour,
