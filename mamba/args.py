@@ -45,8 +45,8 @@ def grab_args():
         help="Uses BPF syntax to filter packets",
     )
     parser.add_argument(
-        "-c",
-        "--count",
+        "-a",
+        "--amount",
         required=False,
         type=int,
         default=0,
@@ -54,7 +54,7 @@ def grab_args():
     )
     parser.add_argument("-v", "--verbose", required=False, action="store_true")
     parser.add_argument(
-        "-cL",
+        "-cl",
         "--colourless",
         dest="colour",
         required=False,
@@ -62,6 +62,7 @@ def grab_args():
         help="Do not display coloured output",
     )
     parser.add_argument(
+        "-nc"
         "--no-confirm",
         dest="confirm",
         required=False,
@@ -69,6 +70,7 @@ def grab_args():
         help="Do not ask for confirmation in (y/N) prompts, (automatic yes)",
     )
     parser.add_argument(
+        "-g"
         "--guess-service",
         dest="guess_service",
         required=False,
@@ -76,6 +78,7 @@ def grab_args():
         help="Try to guess which TCP/UDP service, replacing the port number",
     )
     parser.add_argument(
+        "-li",
         "--list-interfaces",
         dest="ls_ifaces",
         required=False,
@@ -83,6 +86,7 @@ def grab_args():
         help="List interfaces available to the user",
     )
     parser.add_argument(
+        "-lc",
         "--list-conversations",
         dest="ls_convos",
         required=False,
@@ -90,11 +94,28 @@ def grab_args():
         help="List conversations between different addresses",
     )
     parser.add_argument(
+        "-ns",
         "--no-save",
         dest="save",
         required=False,
         action="store_false",
         help="Disable save prompt at the end of live capture",
+    )
+    parser.add_argument(
+        "-nd",
+        "--no-date",
+        dest="date",
+        required=False,
+        action="store_false",
+        help="Disable showing the dates of packets captured"
+    )
+    parser.add_argument(
+        "-nC",
+        "--no-count",
+        dest="count",
+        required=False,
+        action="store_false",
+        help="Disable showing the dates of packets captured"
     )
     args = parser.parse_args()
 
