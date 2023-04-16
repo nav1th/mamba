@@ -54,8 +54,8 @@ def grab_args():
     )
     parser.add_argument("-v", "--verbose", required=False, action="store_true")
     parser.add_argument(
-        "-cl",
-        "--colourless",
+        "-ncL",
+        "--no-colour",
         dest="colour",
         required=False,
         action="store_false",
