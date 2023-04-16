@@ -62,16 +62,14 @@ def grab_args():
         help="Do not display coloured output",
     )
     parser.add_argument(
-        "-nc"
-        "--no-confirm",
+        "-nc" "--no-confirm",
         dest="confirm",
         required=False,
         action="store_false",
         help="Do not ask for confirmation in (y/N) prompts, (automatic yes)",
     )
     parser.add_argument(
-        "-g"
-        "--guess-service",
+        "-g" "--guess-service",
         dest="guess_service",
         required=False,
         action="store_true",
@@ -107,7 +105,7 @@ def grab_args():
         dest="date",
         required=False,
         action="store_false",
-        help="Disable showing the dates of packets captured"
+        help="Disable showing the dates of packets captured",
     )
     parser.add_argument(
         "-nC",
@@ -115,10 +113,9 @@ def grab_args():
         dest="count",
         required=False,
         action="store_false",
-        help="Disable showing the dates of packets captured"
+        help="Disable showing the dates of packets captured",
     )
     args = parser.parse_args()
-
 
     # incompatible arguments
     if args.iface and args.read:
