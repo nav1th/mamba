@@ -59,6 +59,9 @@ from scapy.layers.tls.record import (
 
 from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
 
+#Scapy Kerberos
+from scapy.layers.kerberos import Kerberos
+
 # Scapy DNS
 from scapy.layers.dns import DNS
 
@@ -385,6 +388,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         if colour:
             pcolours += f"{Fore.GREEN}"
         protocol += f"SSLv2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+    elif Kerberos in pkt:
+        protocol += f"Kerberos - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {pkt[Kerberos].mysummary()}"
 
     elif HTTP in pkt:
         if colour and Raw in pkt:
