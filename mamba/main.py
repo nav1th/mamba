@@ -59,7 +59,7 @@ from scapy.layers.tls.record import (
 
 from scapy.layers.tls.record_sslv2 import SSLv2 as SSL
 
-#Scapy Kerberos
+# Scapy Kerberos
 from scapy.layers.kerberos import Kerberos
 
 # Scapy DNS
@@ -111,8 +111,6 @@ def check_write_ok(path) -> Tuple[bool, int, str]:  # checks if writing to pcap 
 
 def proc_pkt(pkt):  # handles packets depending on protocol
     ##possible address types
-    time = int(pkt[0].time)
-    date = datetime.utcfromtimestamp(time).strftime("%d-%m-%Y %H:%M:%S")
     ether_src = None
     ether_dst = None
     ip_src = None
@@ -126,6 +124,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
+    print_str = ""
     number: int
 
     if Ether in pkt:  # grab ethernet info if any
@@ -183,10 +182,12 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             ("ECE", 0x40),
             ("CWR", 0x80),
         ]
+
         for f in flag_pairs:  # checks flags, ands them to see if they are present
             if flags & f[1]:  # if certain flag is detected
                 flag_num += 1
                 flags_found.append(f[0])  # add it to list of flags found
+
         alt_proto = [
             HTTP,
             TLS,
@@ -464,8 +465,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         elif Ether in pkt:
             protocol += f" - {ether_src} ==> {ether_dst}"
     if pcolours != "":
-        print(f"{pcolours}", end="")
-    print(f"#{number} {date} {protocol}")
+        print_str += pcolours
+    if count_enabled:
+        print_str += f"#{number} "
+    if date_enabled:
+        time = int(pkt[0].time)
+        date = datetime.utcfromtimestamp(time).strftime("%d-%m-%Y %H:%M:%S")
+        print_str += f"{date} "
+    print_str += protocol
 
     if verbose:
         if Raw in pkt:
@@ -474,11 +481,12 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             except:
                 payload += pkt[Raw].load.decode("iso-8859-1")
         if payload != "":
-            print(f"\t{hex_escape(payload)}")
+            print_str += f"\n\tData: {hex_escape(payload)}"
+
     if colour:
-        print(
-            Style.RESET_ALL, end=""
-        )  # clears formatting if any regardless of show_raw
+        print_str += Style.RESET_ALL  # clears colour formating if there's any
+
+    print(print_str)
 
 
 if __name__ == "__main__":
@@ -496,13 +504,14 @@ if __name__ == "__main__":
     iface = (
         args.iface
     )  # if user desires to select interface, otherwise first available will be selected for them
-    count = (
-        args.count
-    )  # how many packets will be captured from live/pcap file, e.g. if count is 10, only 10 packets will be captured, then program ends
     confirm = args.confirm
+    amount = args.amount
     verbose = args.verbose
     ls_ifaces = args.ls_ifaces
     ls_convos = args.ls_convos
+    guess_service = args.guess_service
+    count_enabled = args.count
+    date_enabled = args.date
 
     if not iface:
         iface = conf.iface  # chooses the first suitable interface according to Scapy
@@ -512,8 +521,6 @@ if __name__ == "__main__":
         ):  # if the iface user specifiices isn't a working interface detected by Scapy
             m.err("failed to select working interface", colour)
             exit(2)
-
-    guess_service = args.guess_service
 
     col_ls = [
         Fore.GREEN,
@@ -587,9 +594,7 @@ if __name__ == "__main__":
 
     if rpcap:
         try:
-            capture = sniff(
-                prn=proc_pkt, offline=rpcap, filter=args.filter, count=args.count
-            )
+            capture = sniff(prn=proc_pkt, offline=rpcap, filter=filter, count=amount)
         except OSError as e:
             m.err(
                 f"failed to read from '{wpcap}' due to '{e.strerror.lower()}'", colour
@@ -604,7 +609,7 @@ if __name__ == "__main__":
     else:  # must be interface being used then
         try:
             capture = sniff(
-                prn=proc_pkt, iface=iface, filter=args.filter, count=args.count
+                prn=proc_pkt, iface=iface, filter=args.filter, count=args.amount
             )
         except OSError as e:
             m.err(f"failed to sniff on {iface} due to '{e.strerror.lower()}'", colour)
@@ -639,43 +644,43 @@ if __name__ == "__main__":
         # first part is for layer 1 which will always be there
         convos = "\n###layer 1###\n"
         if colour:
-            for addr, count in pairs_l2.items():
-                convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+            for addr, amount in pairs_l2.items():
+                convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
         else:
-            for addr, count in pairs_l2.items():
-                convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
+            for addr, amount in pairs_l2.items():
+                convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
         if (
             pairs_ipv4 or pairs_ipv6
         ):  # there may or may not be stuff going on no higher than layer 2
             convos += "\n\n\n###layer 2###\n"
             if pairs_ipv4:
                 if colour:
-                    for addr, count in pairs_ipv4.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                    for addr, amount in pairs_ipv4.items():
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
                 else:
-                    for addr, count in pairs_ipv4.items():
-                        convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
+                    for addr, amount in pairs_ipv4.items():
+                        convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
             if pairs_ipv6:
                 if colour:
-                    for addr, count in pairs_ipv6.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {count}{Style.RESET_ALL}\n"
+                    for addr, amount in pairs_ipv6.items():
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
                 else:
-                    for addr, count in pairs_ipv6.items():
-                        convos += f"{addr[0]} <==> {addr[1]}': {count}\n"
+                    for addr, amount in pairs_ipv6.items():
+                        convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
         if pairs_tcp or pairs_udp:  # there may or may not be stuff going on at layer 3
             convos += "\n\n\n###layer 3###\n"
             if pairs_tcp:  # if theres tcp conversations
                 if colour:
-                    for addr, count in pairs_tcp.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
+                    for addr, amount in pairs_tcp.items():
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
                 else:
-                    for addr, count in pairs_tcp.items():
-                        convos += f"{addr[0]} <==> {addr[1]}: {count}\n"
+                    for addr, amount in pairs_tcp.items():
+                        convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
             if pairs_udp:  # if theres udp conversations
                 if colour:
-                    for addr, count in pairs_udp.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {count}{Style.RESET_ALL}\n"
+                    for addr, amount in pairs_udp.items():
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
                 else:
-                    for addr, count in pairs_udp.items():
-                        convos += f"{addr[0]} <==> {addr[1]}: {count}\n"
+                    for addr, amount in pairs_udp.items():
+                        convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
         print(convos)
