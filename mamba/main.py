@@ -162,7 +162,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         sport = pkt[TCP].sport
         dport = pkt[TCP].dport
         if ls_convos:
-            key = tuple(sorted([f"{ip_src}:{sport}-tcp", f"{ip_dst}:{dport}-tcp"]))
+            key = tuple(sorted([f"{ip_src}:{sport}/tcp", f"{ip_dst}:{dport}/tcp"]))
             pairs_tcp.update([key])
 
         sserv = sport
@@ -273,8 +273,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     elif UDP in pkt:
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
-        key = tuple(sorted([f"{ip_src}:{sport}-udp", f"{ip_dst}:{dport}-udp"]))
-        pairs_udp.update([key])
+        if ls_convos:
+            key = tuple(sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"]))
+            pairs_udp.update([key])
         sserv = sport
         dserv = dport
         alt_proto = [
