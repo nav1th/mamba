@@ -217,12 +217,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 elif "SYN" in flags_found and "ACK" in flags_found:
                     pcolours += Fore.CYAN
 
-            protocol += f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
-            if verbose:  # if user wants more information
-                protocol += f"FLAGS: {flags_found} "  # group of flags, else single flag
-                protocol += f"SEQ: {seq} ACK: {ack}"
+            if len(flags_found) > 1:
+                flags_found = f"[{', '.join(flags_found)}]"
             else:
-                protocol += f"FLAGS: {flags_found}"  # group of flags, else single flag
+                flags_found = f"{flags_found[0]}"
+            protocol += f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
+            protocol += f"FLAGS: {flags_found} "  # group of flags, else single flag
+            if verbose:  # if user wants more information
+                protocol += f"SEQ: {seq} ACK: {ack}"
         elif Raw in pkt and not any(i in pkt for i in alt_proto):
             if 20 in (sport, dport) or 21 in (sport, dport):
                 protocol += f"FTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
@@ -512,6 +514,11 @@ if __name__ == "__main__":
     guess_service = args.guess_service
     count_enabled = args.count
     date_enabled = args.date
+    if args.minimal:
+        count_enabled = False
+        date_enabled = False
+        colour = False
+    
 
     if not iface:
         iface = conf.iface  # chooses the first suitable interface according to Scapy

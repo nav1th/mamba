@@ -115,6 +115,13 @@ def grab_args():
         action="store_false",
         help="Disable showing the dates of packets captured",
     )
+    parser.add_argument(
+        "--minimal",
+        dest="minimal",
+        required=False,
+        action="store_true",
+        help="Disables colouring, removes packet count and date from output"
+    )
     args = parser.parse_args()
 
     # incompatible arguments
