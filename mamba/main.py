@@ -270,7 +270,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 else:  # if it still has no idea, it just displays its a TCP protocol
                     protocol += f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
-    elif UDP in pkt:
+    elif UDP in pkt: #if its not TCP must be UDP
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
         if ls_convos:
@@ -364,10 +364,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 f"IGMPv3 - {ip_src} ==> {ip_dst} | {igmp.igmpv3types[igmp.type]}"
             )
 
-    elif TLS in pkt:
-        if colour:
+    elif TLS in pkt: #handles TLS
+        if colour: 
             pcolours += f"{Fore.GREEN}"
         protocol += f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
+        #decides what kind of TLS version the packet is
         if TLSAlert in pkt:
             protocol += pkt[TLSAlert].name
             if verbose:
@@ -388,14 +389,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         protocol += (
             f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | TLS Application Data"
         )
-    elif SSL in pkt:
+    elif SSL in pkt: #handles SSL
         if colour:
             pcolours += f"{Fore.GREEN}"
         protocol += f"SSLv2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-    elif Kerberos in pkt:
+    elif Kerberos in pkt: #handles kerneros 
         protocol += f"Kerberos - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {pkt[Kerberos].mysummary()}"
 
-    elif HTTP in pkt:
+    elif HTTP in pkt: #handles HTTP 
         if colour and Raw in pkt:
             pcolours += f"{Fore.YELLOW}"
             pcolours += f"{Back.BLACK}"
@@ -422,7 +423,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         else:
             protocol += f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}"
 
-    elif DNS in pkt:
+    elif DNS in pkt: #handles DNS
         if colour:
             pcolours += Fore.BLUE
 
@@ -433,11 +434,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f"DNS - {ip_src}:{sport} ==> {ip_dst}:{dport} | "
         protocol += dns.mysummary()
 
-    elif TFTP in pkt:
+    elif TFTP in pkt: #handles TFTP
         tftp = pkt[TFTP]
         protocol += f"TFTP - {ip_src}:{sserv} => {ip_dst}:{dserv} | {tftp.mysummary()}"
 
-    elif DHCP in pkt:
+    elif DHCP in pkt: #handles DHCP
         dhcp = pkt[DHCP]
         protocol += f"DHCP - {ip_src} ==> {ip_dst} | {dhcp.mysummary()}"
 
@@ -452,7 +453,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         elif NBNSQueryResponse in pkt:
             protocol += f" | {pkt[NBNSQueryResponse].mysummary()}"
 
-    elif RIP in pkt:
+    elif RIP in pkt: #handles RIP
         protocol += f"RIP - {ip_src} ==> {ip_dst}"
         if RIPEntry in pkt:
             entry = pkt[RIPEntry]
@@ -538,7 +539,7 @@ if __name__ == "__main__":
         Fore.MAGENTA,
         Fore.CYAN,
     ]
-    cy_col_ls = cycle(col_ls)
+    cy_col_ls = cycle(col_ls) #this is to cycle over the different colours
     ##
     if ls_ifaces:  # lists interfaces and trys to guess their type
         for iface in map(str, get_working_ifaces()):
@@ -547,7 +548,7 @@ if __name__ == "__main__":
                 or platform == "linux2"
                 or platform == "openbsd"
                 or platform == "freebsd"
-            ):
+            ): #if it is linux/unix (non-Mac)
                 if iface[0:2] == "lo":
                     iface += " - loopback"
                 elif iface[0:2] == "en" or iface[0:3] == "eth":
@@ -564,7 +565,7 @@ if __name__ == "__main__":
                     iface += " - bridge"
             elif (
                 platform == "darwin"
-            ):  # i dont have a mac, so unfortunately i can't test this
+            ):  # i dont have a Mac, so unfortunately i can't test this
                 if iface == "lo0":
                     iface += " - loopback"
                 elif iface == "en0":
@@ -579,8 +580,6 @@ if __name__ == "__main__":
                     iface += " - tun"
                 elif iface == "awdl0":
                     iface += " - apple wireless direct link"
-            else:
-                pass
             if colour:
                 print(f"{next(cy_col_ls)}{iface}{Style.RESET_ALL}")
             else:
@@ -594,22 +593,24 @@ if __name__ == "__main__":
             case (False, retval, _):
                 exit(retval)
 
-    pairs_l2 = Counter()
+    pairs_l2 = Counter() #this is to count packets and print L2 conversations
+    #the rest are purely for printing conversations
     pairs_ipv4 = Counter()
     pairs_ipv6 = Counter()
     pairs_tcp = Counter()
     pairs_udp = Counter()
 
-    if rpcap:
+    if rpcap: #if the user wants to read a pcap file
         try:
             capture = sniff(prn=proc_pkt, offline=rpcap, filter=filter, count=amount)
-        except OSError as e:
+        except OSError as e: #will mostly handle permission errors but good for handling others too
             m.err(
                 f"failed to read from '{wpcap}' due to '{e.strerror.lower()}'", colour
             )
+            exit(e.errno)
         except Scapy_Exception as e:
             m.err(f"failed to sniff pcap file: {e}", colour)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt: # no ugly keyboard exception output
             pass
         else:
             if wpcap:
