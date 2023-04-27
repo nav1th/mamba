@@ -224,7 +224,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
             protocol += f"FLAGS: {flags_found} "  # group of flags, else single flag
             if verbose:  # if user wants more information
-                protocol += f"SEQ: {seq} ACK: {ack}"
+                protocol += f"| SEQ: {seq} | ACK: {ack}"
         elif Raw in pkt and not any(i in pkt for i in alt_proto):
             if 20 in (sport, dport) or 21 in (sport, dport):
                 protocol += f"FTP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
@@ -297,48 +297,12 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if Raw not in pkt and not any(
+        if not any(
             i in pkt for i in alt_proto
         ):  # raw UDP packets with no app data
+            if colour: 
+                pcolours += Fore.BLUE
             protocol += f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-        elif Raw in pkt and not any(
-            i in pkt for i in alt_proto
-        ):  # handles other UDP protocols and guesses the service
-            if 443 in (sport, dport):
-                if colour:
-                    pcolours += Fore.GREEN
-                protocol += f"HTTPS-UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-            else:
-                proto = None
-                if sport > dport:
-                    try:
-                        proto = getservbyport(sport)  # guesses src port service
-                    except:
-                        try:
-                            proto = getservbyport(dport)  # guesses dst port service
-                        except:
-                            pass
-                elif sport < dport:
-                    try:
-                        proto = getservbyport(dport)  # guesses dst port service
-                    except:
-                        try:
-                            proto = getservbyport(sport)  # guesses src port service
-                        except:
-                            pass
-                else:
-                    try:
-                        proto = getservbyport(
-                            sport
-                        )  # order doesn't matter as src and dst ports are the same
-                    except:
-                        pass
-                if proto:  # if there's a guess
-                    protocol += (
-                        f"{proto.upper()} - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-                    )
-                else:  # if it still has no idea, it just displays its a UDP protocol
-                    protocol += f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
     if ARP in pkt:  # ARP
         arp = pkt[ARP]
@@ -599,97 +563,91 @@ if __name__ == "__main__":
     pairs_ipv6 = Counter()
     pairs_tcp = Counter()
     pairs_udp = Counter()
-
-    if rpcap: #if the user wants to read a pcap file
-        try:
+    try:
+        if rpcap: 
             capture = sniff(prn=proc_pkt, offline=rpcap, filter=filter, count=amount)
-        except OSError as e: #will mostly handle permission errors but good for handling others too
-            m.err(
-                f"failed to read from '{wpcap}' due to '{e.strerror.lower()}'", colour
-            )
-            exit(e.errno)
-        except Scapy_Exception as e:
-            m.err(f"failed to sniff pcap file: {e}", colour)
-        except KeyboardInterrupt: # no ugly keyboard exception output
-            pass
-        else:
-            if wpcap:
-                wrpcap(wpcap, capture)
-    else:  # must be interface being used then
-        try:
+        else: #must be listening on interface
             capture = sniff(
                 prn=proc_pkt, iface=iface, filter=args.filter, count=args.amount
             )
-        except OSError as e:
+    except OSError as e: #will mostly handle permission errors but good for handling others too
+        if rpcap:
+            m.err(
+                f"failed to read from '{rpcap}' due to '{e.strerror.lower()}'", colour
+            )
+        else: #must be listening on interface
             m.err(f"failed to sniff on {iface} due to '{e.strerror.lower()}'", colour)
-            exit(e.errno)
-        except Scapy_Exception as e:
+        exit(e.errno)
+    except Scapy_Exception as e:
+        if rpcap:
+            m.err(f"failed to sniff pcap file: {e}", colour)
+        else: #must be listening on interface
             m.err(f"failed to sniff live capture: {e}", colour)
-        except KeyboardInterrupt:
-            pass
-        else:
-            if wpcap:
-                wrpcap(wpcap, capture)
-            else:  # this is if the user wants to save the packet capture at the end
-                print()  # get rid of the Ctrl-C
-                if confirm and not m.prompt(
-                    "Do you wish to save the pcap?", colour
-                ):  # wont prompt if user said no
-                    exit(0)
-                wpcap = input("Save it as: ")
-                match check_write_ok(wpcap):
-                    case (True, _, _):
-                        wrpcap(wpcap, capture)
-                    case (
-                        False,
-                        retval,
-                        errstr,
-                    ) if retval > 0:  # theres an error as return value more than 0
-                        m.warn(
-                            f"Unable to save pcap file '{wpcap}' due to {errstr}",
-                            colour,
-                        )
-    if ls_convos:  ##list conversations between two different addresses at the end
-        # first part is for layer 1 which will always be there
-        convos = "\n###layer 1###\n"
-        if colour:
-            for addr, amount in pairs_l2.items():
-                convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
-        else:
-            for addr, amount in pairs_l2.items():
-                convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
-        if (
-            pairs_ipv4 or pairs_ipv6
-        ):  # there may or may not be stuff going on no higher than layer 2
-            convos += "\n\n\n###layer 2###\n"
-            if pairs_ipv4:
-                if colour:
-                    for addr, amount in pairs_ipv4.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
-                else:
-                    for addr, amount in pairs_ipv4.items():
-                        convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
-            if pairs_ipv6:
-                if colour:
-                    for addr, amount in pairs_ipv6.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
-                else:
-                    for addr, amount in pairs_ipv6.items():
-                        convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
-        if pairs_tcp or pairs_udp:  # there may or may not be stuff going on at layer 3
-            convos += "\n\n\n###layer 3###\n"
-            if pairs_tcp:  # if theres tcp conversations
-                if colour:
-                    for addr, amount in pairs_tcp.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
-                else:
-                    for addr, amount in pairs_tcp.items():
-                        convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
-            if pairs_udp:  # if theres udp conversations
-                if colour:
-                    for addr, amount in pairs_udp.items():
-                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
-                else:
-                    for addr, amount in pairs_udp.items():
-                        convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
-        print(convos)
+    except KeyboardInterrupt: # no ugly keyboard exception output
+        pass
+    else: #handles stuff after the packet capture
+        if wpcap: 
+            wrpcap(wpcap, capture)
+        elif not rpcap: 
+            print()  # get rid of the Ctrl-C
+            if confirm and not m.prompt(
+                "Do you wish to save the pcap?", colour
+            ):  # wont prompt if user said no
+                exit(0)
+            wpcap = input("Save it as: ")
+            match check_write_ok(wpcap):
+                case (True, _, _):
+                    wrpcap(wpcap, capture)
+                case (
+                    False,
+                    retval,
+                    errstr,
+                ) if retval > 0:  # theres an error as return value more than 0
+                    m.warn(
+                        f"Unable to save pcap file '{wpcap}' due to {errstr}",
+                        colour,
+                    )
+        if ls_convos:  ##list conversations between two different addresses at the end
+            # first part is for layer 1 which will always be there
+            convos = "\n###layer 1###\n"
+            if colour:
+                for addr, amount in pairs_l2.items():
+                    convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
+            else:
+                for addr, amount in pairs_l2.items():
+                    convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
+            if (
+                pairs_ipv4 or pairs_ipv6
+            ):  # there may or may not be stuff going on no higher than layer 2
+                convos += "\n\n\n###layer 2###\n"
+                if pairs_ipv4:
+                    if colour:
+                        for addr, amount in pairs_ipv4.items():
+                            convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
+                    else:
+                        for addr, amount in pairs_ipv4.items():
+                            convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
+                if pairs_ipv6:
+                    if colour:
+                        for addr, amount in pairs_ipv6.items():
+                            convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
+                    else:
+                        for addr, amount in pairs_ipv6.items():
+                            convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
+            if pairs_tcp or pairs_udp:  # there may or may not be stuff going on at layer 3
+                convos += "\n\n\n###layer 3###\n"
+                if pairs_tcp:  # if theres tcp conversations
+                    if colour:
+                        for addr, amount in pairs_tcp.items():
+                            convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
+                    else:
+                        for addr, amount in pairs_tcp.items():
+                            convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
+                if pairs_udp:  # if theres udp conversations
+                    if colour:
+                        for addr, amount in pairs_udp.items():
+                            convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}: {amount}{Style.RESET_ALL}\n"
+                    else:
+                        for addr, amount in pairs_udp.items():
+                            convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
+            print(convos)
