@@ -13,7 +13,8 @@ def grab_args():
         required=False,
         type=str,
         default=False,
-        help="Select network interface to listen on",
+        metavar="INTERFACE",
+        help="Select network INTERFACE to listen on",
     )
     parser.add_argument(
         "-r",
@@ -21,7 +22,7 @@ def grab_args():
         required=False,
         default=False,
         metavar="FILE",
-        help="Select '.pcap' file to read packets from",
+        help="Select '.pcap' FILE to read packets from",
     )
     parser.add_argument(
         "-w",
@@ -29,7 +30,7 @@ def grab_args():
         required=False,
         default=False,
         metavar="FILE",
-        help="Writes packet capture to file",
+        help="Writes packet capture to FILE",
     )
     parser.add_argument(
         "-n",
