@@ -555,14 +555,6 @@ if __name__ == "__main__":
         date_enabled = False
         colour = False
 
-    if not iface:
-        iface = conf.iface  # chooses the first suitable interface according to Scapy
-    else:  # checks if the interface user selected is a working interface
-        if iface not in map(
-            str, get_working_ifaces()
-        ):  # if the iface user specifiices isn't a working interface detected by Scapy
-            m.err("failed to select working interface", colour)
-            exit(2)
 
     col_ls = [
         Fore.GREEN,
