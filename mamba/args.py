@@ -20,6 +20,7 @@ def grab_args():
         "--read",
         required=False,
         default=False,
+        metavar="FILE",
         help="Select '.pcap' file to read packets from",
     )
     parser.add_argument(
@@ -27,6 +28,7 @@ def grab_args():
         "--write",
         required=False,
         default=False,
+        metavar="FILE",
         help="Writes packet capture to file",
     )
     parser.add_argument(
@@ -50,9 +52,16 @@ def grab_args():
         required=False,
         type=int,
         default=0,
+        metavar="NUM",
         help="Show only the first [COUNT] amount of packets",
     )
-    parser.add_argument("-v", "--verbose", required=False, action="store_true")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        required=False,
+        action="store_true",
+        help="Make output more verbose, (outputs raw data)",
+    )
     parser.add_argument(
         "-ncL",
         "--no-colour",
@@ -62,14 +71,16 @@ def grab_args():
         help="Do not display coloured output",
     )
     parser.add_argument(
-        "-nc" "--no-confirm",
+        "-nc",
+        "--no-confirm",
         dest="confirm",
         required=False,
         action="store_false",
         help="Do not ask for confirmation in (y/N) prompts, (automatic yes)",
     )
     parser.add_argument(
-        "-g" "--guess-service",
+        "-g",
+        "--guess-service",
         dest="guess_service",
         required=False,
         action="store_true",
@@ -120,7 +131,7 @@ def grab_args():
         dest="minimal",
         required=False,
         action="store_true",
-        help="Disables colouring, removes packet count and date from output"
+        help="Disables colouring, removes packet count and, removes date from output",
     )
     args = parser.parse_args()
 
