@@ -89,74 +89,74 @@ def hex_escape(s):  # for reading bytes, usually from encrypted content
         match c:
             case c if c in printable:
                 print_str += c
-            case '\x00':
+            case "\x00":
                 print_str += "<NUL>"
-            case '\x01':
+            case "\x01":
                 print_str += "<SOH>"
-            case '\x02':
+            case "\x02":
                 print_str += "<STX>"
-            case '\x03':
+            case "\x03":
                 print_str += "<ETX>"
-            case '\x04':
+            case "\x04":
                 print_str += "<EOT>"
-            case '\x05':
+            case "\x05":
                 print_str += "<ENQ>"
-            case '\x06':
+            case "\x06":
                 print_str += "<ACK>"
-            case '\x07':
+            case "\x07":
                 print_str += "<BEL>"
-            case '\x08':
+            case "\x08":
                 print_str += "<BS>"
-            case '\x09':
+            case "\x09":
                 print_str += "<TAB>"
-            case '\x0a':
+            case "\x0a":
                 print_str += "<LF>"
-            case '\x0b':
+            case "\x0b":
                 print_str += "<VT>"
-            case '\x0c':
+            case "\x0c":
                 print_str += "<FF>"
-            case '\x0d':
+            case "\x0d":
                 print_str += "<CR>"
-            case '\x0e':
+            case "\x0e":
                 print_str += "<SO>"
-            case '\x0f':
+            case "\x0f":
                 print_str += "<SI>"
-            case '\x10':
+            case "\x10":
                 print_str += "<DLE>"
-            case '\x11':
+            case "\x11":
                 print_str += "<DC1>"
-            case '\x12':
+            case "\x12":
                 print_str += "<DC2>"
-            case '\x13':
+            case "\x13":
                 print_str += "<DC3>"
-            case '\x14':
+            case "\x14":
                 print_str += "<DC4>"
-            case '\x15':
+            case "\x15":
                 print_str += "<NAK>"
-            case '\x16':
+            case "\x16":
                 print_str += "<SYN>"
-            case '\x17':
+            case "\x17":
                 print_str += "<ETB>"
-            case '\x18':
+            case "\x18":
                 print_str += "<CAN>"
-            case '\x19':
+            case "\x19":
                 print_str += "<EM>"
-            case '\x1a':
+            case "\x1a":
                 print_str += "<SUB>"
-            case '\x1b':
+            case "\x1b":
                 print_str += "<ESC>"
-            case '\x1c':
+            case "\x1c":
                 print_str += "<FS>"
-            case '\x1d':
+            case "\x1d":
                 print_str += "<GS>"
-            case '\x1e':
+            case "\x1e":
                 print_str += "<RS>"
-            case '\x1f':
+            case "\x1f":
                 print_str += "<US>"
             case _:
                 print_str += r"\x{0:02x}".format(ord(c))
 
-    return print_str 
+    return print_str
 
 
 def check_write_ok(path) -> Tuple[bool, int, str]:  # checks if writing to pcap is okay
@@ -342,7 +342,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 else:  # if it still has no idea, it just displays its a TCP protocol
                     protocol += f"TCP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
-    elif UDP in pkt: #if its not TCP must be UDP
+    elif UDP in pkt:  # if its not TCP must be UDP
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
         if ls_convos:
@@ -369,10 +369,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if not any(
-            i in pkt for i in alt_proto
-        ):  # raw UDP packets with no app data
-            if colour: 
+        if not any(i in pkt for i in alt_proto):  # raw UDP packets with no app data
+            if colour:
                 pcolours += Fore.BLUE
             protocol += f"UDP - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
 
@@ -400,11 +398,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 f"IGMPv3 - {ip_src} ==> {ip_dst} | {igmp.igmpv3types[igmp.type]}"
             )
 
-    elif TLS in pkt: #handles TLS
-        if colour: 
+    elif TLS in pkt:  # handles TLS
+        if colour:
             pcolours += f"{Fore.GREEN}"
         protocol += f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | "
-        #decides what kind of TLS version the packet is
+        # decides what kind of TLS version the packet is
         if TLSAlert in pkt:
             protocol += pkt[TLSAlert].name
             if verbose:
@@ -425,14 +423,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         protocol += (
             f"TLSv13 - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | TLS Application Data"
         )
-    elif SSL in pkt: #handles SSL
+    elif SSL in pkt:  # handles SSL
         if colour:
             pcolours += f"{Fore.GREEN}"
         protocol += f"SSLv2 - {ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-    elif Kerberos in pkt: #handles kerneros 
+    elif Kerberos in pkt:  # handles kerneros
         protocol += f"Kerberos - {ip_src}:{sserv} ==> {ip_dst}:{dserv} | {pkt[Kerberos].mysummary()}"
 
-    elif HTTP in pkt: #handles HTTP 
+    elif HTTP in pkt:  # handles HTTP
         if colour and Raw in pkt:
             pcolours += f"{Fore.YELLOW}"
             pcolours += f"{Back.BLACK}"
@@ -459,7 +457,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         else:
             protocol += f"HTTP - {ip_src}:{sport} ==> {ip_dst}:{dport}"
 
-    elif DNS in pkt: #handles DNS
+    elif DNS in pkt:  # handles DNS
         if colour:
             pcolours += Fore.BLUE
 
@@ -470,11 +468,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f"DNS - {ip_src}:{sport} ==> {ip_dst}:{dport} | "
         protocol += dns.mysummary()
 
-    elif TFTP in pkt: #handles TFTP
+    elif TFTP in pkt:  # handles TFTP
         tftp = pkt[TFTP]
         protocol += f"TFTP - {ip_src}:{sserv} => {ip_dst}:{dserv} | {tftp.mysummary()}"
 
-    elif DHCP in pkt: #handles DHCP
+    elif DHCP in pkt:  # handles DHCP
         dhcp = pkt[DHCP]
         protocol += f"DHCP - {ip_src} ==> {ip_dst} | {dhcp.mysummary()}"
 
@@ -489,7 +487,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         elif NBNSQueryResponse in pkt:
             protocol += f" | {pkt[NBNSQueryResponse].mysummary()}"
 
-    elif RIP in pkt: #handles RIP
+    elif RIP in pkt:  # handles RIP
         protocol += f"RIP - {ip_src} ==> {ip_dst}"
         if RIPEntry in pkt:
             entry = pkt[RIPEntry]
@@ -556,7 +554,6 @@ if __name__ == "__main__":
         count_enabled = False
         date_enabled = False
         colour = False
-    
 
     if not iface:
         iface = conf.iface  # chooses the first suitable interface according to Scapy
@@ -575,7 +572,7 @@ if __name__ == "__main__":
         Fore.MAGENTA,
         Fore.CYAN,
     ]
-    cy_col_ls = cycle(col_ls) #this is to cycle over the different colours
+    cy_col_ls = cycle(col_ls)  # this is to cycle over the different colours
     ##
     if ls_ifaces:  # lists interfaces and trys to guess their type
         for iface in map(str, get_working_ifaces()):
@@ -584,7 +581,7 @@ if __name__ == "__main__":
                 or platform == "linux2"
                 or platform == "openbsd"
                 or platform == "freebsd"
-            ): #if it is linux/unix (non-Mac)
+            ):  # if it is linux/unix (non-Mac)
                 if iface[0:2] == "lo":
                     iface += " - loopback"
                 elif iface[0:2] == "en" or iface[0:3] == "eth":
@@ -629,38 +626,40 @@ if __name__ == "__main__":
             case (False, retval, _):
                 exit(retval)
 
-    pairs_l2 = Counter() #this is to count packets and print L2 conversations
-    #the rest are purely for printing conversations
+    pairs_l2 = Counter()  # this is to count packets and print L2 conversations
+    # the rest are purely for printing conversations
     pairs_ipv4 = Counter()
     pairs_ipv6 = Counter()
     pairs_tcp = Counter()
     pairs_udp = Counter()
     try:
-        if rpcap: 
+        if rpcap:
             capture = sniff(prn=proc_pkt, offline=rpcap, filter=filter, count=amount)
-        else: #must be listening on interface
+        else:  # must be listening on interface
             capture = sniff(
                 prn=proc_pkt, iface=iface, filter=args.filter, count=args.amount
             )
-    except OSError as e: #will mostly handle permission errors but good for handling others too
+    except (
+        OSError
+    ) as e:  # will mostly handle permission errors but good for handling others too
         if rpcap:
             m.err(
-                f"failed to read from '{rpcap}' due to '{e.strerror.lower()}'", colour
+                    f"failed to read from '{rpcap}' due to: '{e.strerror.lower()}'", colour
             )
-        else: #must be listening on interface
-            m.err(f"failed to sniff on {iface} due to '{e.strerror.lower()}'", colour)
+        else:  # must be listening on interface
+            m.err(f"failed to sniff on {iface} due to: '{e.strerror.lower()}'", colour)
         exit(e.errno)
     except Scapy_Exception as e:
         if rpcap:
-            m.err(f"failed to sniff pcap file: {e}", colour)
-        else: #must be listening on interface
-            m.err(f"failed to sniff live capture: {e}", colour)
-    except KeyboardInterrupt: # no ugly keyboard exception output
+            m.err(f"failed to read from '{rpcap}' due to: '{str(e).lower()}'", colour)
+        else:  # must be listening on interface
+            m.err(f"failed to sniff on {iface} due to: '{str(e).lower()}'", colour)
+    except KeyboardInterrupt:  # no ugly keyboard exception output
         pass
-    else: #handles stuff after the packet capture
-        if wpcap: 
+    else:  # handles stuff after the packet capture
+        if wpcap:
             wrpcap(wpcap, capture)
-        elif not rpcap: 
+        elif not rpcap:
             print()  # get rid of the Ctrl-C
             if confirm and not m.prompt(
                 "Do you wish to save the pcap?", colour
@@ -706,7 +705,9 @@ if __name__ == "__main__":
                     else:
                         for addr, amount in pairs_ipv6.items():
                             convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
-            if pairs_tcp or pairs_udp:  # there may or may not be stuff going on at layer 3
+            if (
+                pairs_tcp or pairs_udp
+            ):  # there may or may not be stuff going on at layer 3
                 convos += "\n\n\n###layer 3###\n"
                 if pairs_tcp:  # if theres tcp conversations
                     if colour:
