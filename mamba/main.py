@@ -84,7 +84,79 @@ load_layer("tls")
 
 def hex_escape(s):  # for reading bytes, usually from encrypted content
     printable = string.ascii_letters + string.digits + string.punctuation + " "
-    return "".join(c if c in printable else r"\x{0:02x}".format(ord(c)) for c in s)
+    print_str = ""
+    for c in s:
+        match c:
+            case c if c in printable:
+                print_str += c
+            case '\x00':
+                print_str += "<NUL>"
+            case '\x01':
+                print_str += "<SOH>"
+            case '\x02':
+                print_str += "<STX>"
+            case '\x03':
+                print_str += "<ETX>"
+            case '\x04':
+                print_str += "<EOT>"
+            case '\x05':
+                print_str += "<ENQ>"
+            case '\x06':
+                print_str += "<ACK>"
+            case '\x07':
+                print_str += "<BEL>"
+            case '\x08':
+                print_str += "<BS>"
+            case '\x09':
+                print_str += "<TAB>"
+            case '\x0a':
+                print_str += "<LF>"
+            case '\x0b':
+                print_str += "<VT>"
+            case '\x0c':
+                print_str += "<FF>"
+            case '\x0d':
+                print_str += "<CR>"
+            case '\x0e':
+                print_str += "<SO>"
+            case '\x0f':
+                print_str += "<SI>"
+            case '\x10':
+                print_str += "<DLE>"
+            case '\x11':
+                print_str += "<DC1>"
+            case '\x12':
+                print_str += "<DC2>"
+            case '\x13':
+                print_str += "<DC3>"
+            case '\x14':
+                print_str += "<DC4>"
+            case '\x15':
+                print_str += "<NAK>"
+            case '\x16':
+                print_str += "<SYN>"
+            case '\x17':
+                print_str += "<ETB>"
+            case '\x18':
+                print_str += "<CAN>"
+            case '\x19':
+                print_str += "<EM>"
+            case '\x1a':
+                print_str += "<SUB>"
+            case '\x1b':
+                print_str += "<ESC>"
+            case '\x1c':
+                print_str += "<FS>"
+            case '\x1d':
+                print_str += "<GS>"
+            case '\x1e':
+                print_str += "<RS>"
+            case '\x1f':
+                print_str += "<US>"
+            case _:
+                print_str += r"\x{0:02x}".format(ord(c))
+
+    return print_str 
 
 
 def check_write_ok(path) -> Tuple[bool, int, str]:  # checks if writing to pcap is okay
