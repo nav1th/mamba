@@ -30,6 +30,8 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 
 # Scapy IPv6 & NDP
 from scapy.layers.inet6 import (
+    ICMPv6MLReport,
+    ICMPv6MLReport2,
     IPv6,
     ICMPv6ND_NA as NDP_NA,
     ICMPv6ND_RA as NDP_RA,
@@ -216,15 +218,22 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
-
-        if NDP_RS in pkt:  # router soliciation
-            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
-        if NDP_NA in pkt:  # neighbour advertisement
-            protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour advertisement"
-        if NDP_RA in pkt:  # router advertisement
-            protocol += f"NDP - {ip_src} ==> {ip_dst} | Router advertisement"
-        if NDP_NS in pkt:  # neighbour solicitation
-            protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour solicitation"
+        if any(i in pkt for i in [NDP_RS,NDP_NA,NDP_RA,NDP_NS]): #checks if pkt is NDP
+            pcolours += Fore.BLUE
+            pcolours += Back.WHITE
+            if NDP_RS in pkt:  # router soliciation
+                protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
+            if NDP_NA in pkt:  # neighbour advertisement
+                protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour advertisement"
+            if NDP_RA in pkt:  # router advertisement
+                protocol += f"NDP - {ip_src} ==> {ip_dst} | Router advertisement"
+            if NDP_NS in pkt:  # neighbour solicitation
+                protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour solicitation"
+        if ICMPv6MLReport in pkt:
+            protocol += f"IPv6 - {ip_src} ==> {ip_dst} | Multicast Listener Report v1"
+        if ICMPv6MLReport2 in pkt:
+            protocol += f"IPv6 - {ip_src} ==> {ip_dst} | Multicast Listener Report v2"
+            
 
     key = tuple(sorted([pkt[0].src, pkt[0].dst]))
     pairs_l2.update([key])
@@ -497,11 +506,17 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f" | addr: {addr} mask: {mask} next: {next}"
 
     if protocol == "":
-        protocol += f"UNKNOWN"
         if IP in pkt or IPv6 in pkt:
+            if IP in pkt:
+                protocol += "IPv4"
+            elif IPv6 in pkt: 
+                protocol += "IPv6"
             protocol += f" - {ip_src} ==> {ip_dst}"
         elif Ether in pkt:
+            protocol += "Ethernet"
             protocol += f" - {ether_src} ==> {ether_dst}"
+        else:
+            protocol += f"UNKNOWN"
     if pcolours != "":
         print_str += pcolours
     if count_enabled:
