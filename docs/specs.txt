@@ -7,6 +7,10 @@ Specs of primary PC developing Mamba (Should be fine on any linux distro with Sc
      GPU: Intel Corporation HD Graphics 620 (rev 02)
      RAM: 2927MiB / 7833MiB
 
-External libraries:
-    colorama
-    scapy
+External python libraries:
+    Colorama
+    Scapy
+
+External libaries Windows:
+    Npcap
+    
