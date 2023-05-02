@@ -19,7 +19,7 @@ from colorama import Fore, Back, Style
 
 # Scapy
 from scapy.main import load_layer
-from scapy.all import sniff, Raw, wrpcap, conf, get_working_ifaces
+from scapy.all import sniff, Raw, wrpcap, get_working_ifaces
 from scapy.error import Scapy_Exception
 
 # Scapy Ethernet & ARP
@@ -613,9 +613,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
 
 if __name__ == "__main__":
-
-
-
     args = args.grab_args()  # grab arguments from CLI input
 
     ##args from cli
@@ -803,3 +800,6 @@ if __name__ == "__main__":
                         for addr, amount in pairs_udp.items():
                             convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
             print(convos)
+    if platform == "win32": #stop program exiting automatically, saving output
+        input("\npress enter to exit...")
+
