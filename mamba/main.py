@@ -72,12 +72,36 @@ from scapy.layers.dhcp import DHCP
 
 # Scapy DHCPv6
 from scapy.layers.dhcp6 import (
-    DHCP6,
-    DHCP6_Request,
-    DHCP6_Reply,
     DHCP6_Solicit,
     DHCP6_Advertise,
+    DHCP6_Request,
+    DHCP6_Confirm,
+    DHCP6_Renew,
+    DHCP6_Rebind,
+    DHCP6_Reply,
+    DHCP6_Release,
+    DHCP6_Decline,
+    DHCP6_Reconf,
+    DHCP6_InfoRequest,
+    DHCP6_RelayForward,
+    DHCP6_RelayReply,
+    dhcp6types
 )
+DHCP6_TYPES = [
+    DHCP6_Reply,
+    DHCP6_Renew,
+    DHCP6_Solicit,
+    DHCP6_Request,
+    DHCP6_Advertise,
+    DHCP6_Rebind,
+    DHCP6_Reconf,
+    DHCP6_Confirm,
+    DHCP6_Release,
+    DHCP6_Decline,
+    DHCP6_InfoRequest,
+    DHCP6_RelayForward,
+    DHCP6_RelayReply,
+]
 
 
 # Scapy NTP
@@ -201,16 +225,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     ip_dst = None
     sport = None
     dport = None
-    tcp_info = None
-    # variables below allow for guessing the TCP/UDP protocol used if user wishes,
-    # otherwise they will be the same as the TCP/UDP port numbers
-    sserv = None
-    dserv = None
-    l1conversation = None
-    l2conversation = None
-    l3conversation = (
-        None  # conversation on layer 3 such as 192.168.20.3:80 ==> 192.168.20.53:53261
-    )
+
+    l1conversation = None # conversation on layer 1 such as 'ff:ff:ff:ff:ff:ff ==> de:ad:be:ee:ee:ef' 
+    l2conversation = None # conversation on layer 2 such as '192.168.20.3 ==> 192.168.20.53'
+    l3conversation = None # conversation on layer 3 such as '192.168.20.3:80 ==> 192.168.20.53:53261'
+   
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
@@ -322,7 +341,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 flag_num += 1
                 flags_found.append(f[0])  # add it to list of flags found
 
-        alt_proto = [
+        handled_tcp_proto = [
             HTTP,
             TLS,
             SSL,
@@ -334,7 +353,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             l3conversation = f"[{ip_src}]:{sserv} ==> [{ip_dst}]:{dserv}"
 
         if Raw not in pkt and not any(
-            i in pkt for i in alt_proto
+            i in pkt for i in handled_tcp_proto
         ):  # Raw TCP packet wihh no app data
             if colour:
                 if "RST" in flags_found:
@@ -357,7 +376,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f"TCP - {l3conversation} | FLAGS: {flags_found}"  # group of flags, else single flag
             if verbose:  # if user wants more information
                 protocol += f" | SEQ: {seq} | ACK: {ack}"
-        elif Raw in pkt and not any(i in pkt for i in alt_proto):
+        elif Raw in pkt and not any(i in pkt for i in handled_tcp_proto):
             if sport > dport:  # lower port numbers are prioritised
                 try:
                     rec_proto = getservbyport(dport)  # guesses dst port service
@@ -389,21 +408,20 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     elif UDP in pkt:  # if its not TCP must be UDP
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
-        l3proto = "udp"
         if IP in pkt:
             key = tuple(
-                sorted([f"{ip_src}:{sport}/{l3proto}", f"{ip_dst}:{dport}/{l3proto}"])
+                sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"])
             )
         else:
             key = tuple(
                 sorted(
-                    [f"[{ip_src}]:{sport}/{l3proto}", f"[{ip_dst}]:{dport}/{l3proto}"]
+                    [f"[{ip_src}]:{sport}/udp", f"[{ip_dst}]:{dport}/udp"]
                 )
             )
         pairs_tcp.update([key])
         sserv = sport
         dserv = dport
-        alt_proto = [
+        handled_udp_proto = [
             DHCP,
             DNS,
             TFTP,
@@ -422,11 +440,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 dserv = getservbyport(dport)
             except:
                 pass
-        if IP in pkt:
-            l3conversation = f"{ip_src}:{sserv} ==> {ip_dst}:{dserv}"
-        else:
-            l3conversation = f"[{ip_src}]:{sserv} ==> [{ip_dst}]:{dserv}"
-        if not any(i in pkt for i in alt_proto):  # raw UDP packets with no app data
+        if not any(i in pkt for i in handled_udp_proto) and not any(i in pkt for i in DHCP6_TYPES):  # raw UDP packets with no app data
             if colour:
                 pcolours += Fore.BLUE
             protocol += f"UDP - {l3conversation}"
@@ -528,10 +542,18 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         protocol += f"TFTP - {l3conversation} | {tftp.mysummary()}"
 
     elif DHCP in pkt:  # handles DHCP
+        if colour:
+            pcolours += Fore.BLACK
+            pcolours += Back.BLUE
         dhcp = pkt[DHCP]
         protocol += f"DHCP - {l3conversation} | {dhcp.mysummary()}"
-    elif DHCP6 in pkt:  # handles DHCPv6
-        pass
+
+    elif any(i in pkt for i in DHCP6_TYPES):  # handles DHCPv6
+        if colour:
+            pcolours += Fore.BLACK
+            pcolours += Back.BLUE
+        protocol += f"DHCPv6 - {l3conversation}"
+        protocol += f" | {dhcp6types[pkt[3].msgtype].capitalize()}"
 
     elif NTP in pkt:
         ntp = pkt[NTP]
@@ -591,6 +613,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
 
 if __name__ == "__main__":
+
+
+
     args = args.grab_args()  # grab arguments from CLI input
 
     ##args from cli
