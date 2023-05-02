@@ -71,7 +71,13 @@ from scapy.layers.dns import DNS
 from scapy.layers.dhcp import DHCP
 
 # Scapy DHCPv6
-from scapy.layers.dhcp6 import DHCP6,DHCP6_Request,DHCP6_Reply,DHCP6_Solicit,DHCP6_Advertise
+from scapy.layers.dhcp6 import (
+    DHCP6,
+    DHCP6_Request,
+    DHCP6_Reply,
+    DHCP6_Solicit,
+    DHCP6_Advertise,
+)
 
 
 # Scapy NTP
@@ -202,15 +208,17 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     dserv = None
     l1conversation = None
     l2conversation = None
-    l3conversation = None #conversation on layer 3 such as 192.168.20.3:80 ==> 192.168.20.53:53261
+    l3conversation = (
+        None  # conversation on layer 3 such as 192.168.20.3:80 ==> 192.168.20.53:53261
+    )
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
     print_str = ""
     number: int
-    key = tuple(sorted([pkt[0].src, pkt[0].dst])) #sorts layer 2 conversations
-    pairs_l2.update([key])#stores sorted layer 2 conversations
-    number = sum(pairs_l2.values()) #updates packet count
+    key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 2 conversations
+    pairs_l2.update([key])  # stores sorted layer 2 conversations
+    number = sum(pairs_l2.values())  # updates packet count
 
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src
@@ -260,8 +268,10 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
-        if any(i in pkt for i in [NDP_RS,NDP_NA,NDP_RA,NDP_NS]): #checks if pkt is NDP
-            pcolours += Fore.BLUE
+        if any(
+            i in pkt for i in [NDP_RS, NDP_NA, NDP_RA, NDP_NS]
+        ):  # checks if pkt is NDP
+            pcolours += Fore.BLACK
             pcolours += Back.WHITE
             if NDP_RS in pkt:  # router soliciation
                 protocol += f"NDP - {l2conversation} | Router solication"
@@ -275,8 +285,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v1"
         if ICMPv6MLReport2 in pkt:
             protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v2"
-            
-
 
     if TCP in pkt:  # any TCP data in packet
         sport = pkt[TCP].sport
@@ -286,7 +294,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             if IP in pkt:
                 key = tuple(sorted([f"{ip_src}:{sport}/tcp", f"{ip_dst}:{dport}/tcp"]))
             else:
-                key = tuple(sorted([f"[{ip_src}]:{sport}/tcp", f"[{ip_dst}]:{dport}/tcp"]))
+                key = tuple(
+                    sorted([f"[{ip_src}]:{sport}/tcp", f"[{ip_dst}]:{dport}/tcp"])
+                )
             pairs_tcp.update([key])
 
         sserv = sport
@@ -372,9 +382,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 except:
                     pass
             if rec_proto:  # if there's a guess
-                protocol += (
-                    rec_proto.upper()
-                )
+                protocol += rec_proto.upper()
             else:  # if it still has no idea, it just displays its a TCP protocol
                 protocol += "TCP"
             protocol += f" - {l3conversation}"
@@ -383,9 +391,15 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         dport = pkt[UDP].dport
         l3proto = "udp"
         if IP in pkt:
-            key = tuple(sorted([f"{ip_src}:{sport}/{l3proto}", f"{ip_dst}:{dport}/{l3proto}"]))
+            key = tuple(
+                sorted([f"{ip_src}:{sport}/{l3proto}", f"{ip_dst}:{dport}/{l3proto}"])
+            )
         else:
-            key = tuple(sorted([f"[{ip_src}]:{sport}/{l3proto}", f"[{ip_dst}]:{dport}/{l3proto}"]))
+            key = tuple(
+                sorted(
+                    [f"[{ip_src}]:{sport}/{l3proto}", f"[{ip_dst}]:{dport}/{l3proto}"]
+                )
+            )
         pairs_tcp.update([key])
         sserv = sport
         dserv = dport
@@ -416,7 +430,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             if colour:
                 pcolours += Fore.BLUE
             protocol += f"UDP - {l3conversation}"
-            
 
     if ARP in pkt:  # ARP
         arp = pkt[ARP]
@@ -438,9 +451,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             igmp = pkt[IGMP]
         else:
             igmp = pkt[IGMPv3]
-            protocol += (
-                f"IGMPv3 - {l2conversation} | {igmp.igmpv3types[igmp.type]}"
-            )
+            protocol += f"IGMPv3 - {l2conversation} | {igmp.igmpv3types[igmp.type]}"
 
     elif TLS in pkt:  # handles TLS
         if colour:
@@ -464,9 +475,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     elif _TLSEncryptedContent in pkt:
         if colour:
             pcolours += f"{Fore.GREEN}"
-        protocol += (
-            f"TLSv13 - {l3conversation} | TLS Application Data"
-        )
+        protocol += f"TLSv13 - {l3conversation} | TLS Application Data"
     elif SSL in pkt:  # handles SSL
         if colour:
             pcolours += f"{Fore.GREEN}"
@@ -521,7 +530,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     elif DHCP in pkt:  # handles DHCP
         dhcp = pkt[DHCP]
         protocol += f"DHCP - {l3conversation} | {dhcp.mysummary()}"
-    elif DHCP6 in pkt: # handles DHCPv6
+    elif DHCP6 in pkt:  # handles DHCPv6
         pass
 
     elif NTP in pkt:
@@ -548,7 +557,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         if IP in pkt or IPv6 in pkt:
             if IP in pkt:
                 protocol += "IPv4"
-            elif IPv6 in pkt: 
+            elif IPv6 in pkt:
                 protocol += "IPv6"
             protocol += f" - {l2conversation}"
         elif Ether in pkt:
@@ -608,7 +617,6 @@ if __name__ == "__main__":
         count_enabled = False
         date_enabled = False
         colour = False
-
 
     col_ls = [
         Fore.GREEN,
@@ -690,7 +698,7 @@ if __name__ == "__main__":
     ) as e:  # will mostly handle permission errors but good for handling others too
         if rpcap:
             m.err(
-                    f"failed to read from '{rpcap}' due to: '{e.strerror.lower()}'", colour
+                f"failed to read from '{rpcap}' due to: '{e.strerror.lower()}'", colour
             )
         else:  # must be listening on interface
             m.err(f"failed to sniff on {iface} due to: '{e.strerror.lower()}'", colour)
