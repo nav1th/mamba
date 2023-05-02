@@ -215,11 +215,26 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src
         ether_dst = pkt[Ether].dst
-        l1conversation = f""
+        l1conversation = f"{ether_src} ==> {ether_dst}"
 
     if IP in pkt:  # grab ipv4 info if any
         ip_src = pkt[IP].src
         ip_dst = pkt[IP].dst
+        l2conversation = f"{ip_src} ==> {ip_dst}"
+        if TCP in pkt or UDP in pkt:
+            sserv = pkt[2].sport
+            dserv = pkt[2].dport
+            if guess_service:  # if user wishes for service to be detected by port
+                try:
+                    sserv = getservbyport(sserv)
+                except:
+                    pass
+                try:
+                    dserv = getservbyport(dserv)
+                except:
+                    pass
+            l3conversation = f"{ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+
         if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv4.update([key])
@@ -227,6 +242,21 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     if IPv6 in pkt:  # grab ipv6 info if any
         ip_src = pkt[IPv6].src
         ip_dst = pkt[IPv6].dst
+        l2conversation = f"{ip_src} ==> {ip_dst}"
+        if TCP in pkt or UDP in pkt:
+            sserv = pkt[2].sport
+            dserv = pkt[2].dport
+            if guess_service:  # if user wishes for service to be detected by port
+                try:
+                    sserv = getservbyport(sserv)
+                except:
+                    pass
+                try:
+                    dserv = getservbyport(dserv)
+                except:
+                    pass
+            l3conversation = f"[{ip_src}]:{sserv} ==> [{ip_dst}]:{dserv}"
+
         if ls_convos and TCP not in pkt and UDP not in pkt:
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
@@ -234,30 +264,29 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             pcolours += Fore.BLUE
             pcolours += Back.WHITE
             if NDP_RS in pkt:  # router soliciation
-                protocol += f"NDP - {ip_src} ==> {ip_dst} | Router solication"
+                protocol += f"NDP - {l2conversation} | Router solication"
             if NDP_NA in pkt:  # neighbour advertisement
-                protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour advertisement"
+                protocol += f"NDP - {l2conversation} | Neighbour advertisement"
             if NDP_RA in pkt:  # router advertisement
-                protocol += f"NDP - {ip_src} ==> {ip_dst} | Router advertisement"
+                protocol += f"NDP - {l2conversation} | Router advertisement"
             if NDP_NS in pkt:  # neighbour solicitation
-                protocol += f"NDP - {ip_src} ==> {ip_dst} | Neighbour solicitation"
+                protocol += f"NDP - {l2conversation} | Neighbour solicitation"
         if ICMPv6MLReport in pkt:
-            protocol += f"IPv6 - {ip_src} ==> {ip_dst} | Multicast Listener Report v1"
+            protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v1"
         if ICMPv6MLReport2 in pkt:
-            protocol += f"IPv6 - {ip_src} ==> {ip_dst} | Multicast Listener Report v2"
+            protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v2"
             
 
 
     if TCP in pkt:  # any TCP data in packet
         sport = pkt[TCP].sport
         dport = pkt[TCP].dport
-        l3proto = "tcp"
         rec_proto = None
         if ls_convos:
             if IP in pkt:
-                key = tuple(sorted([f"{ip_src}:{sport}/{l3proto}", f"{ip_dst}:{dport}/{l3proto}"]))
+                key = tuple(sorted([f"{ip_src}:{sport}/tcp", f"{ip_dst}:{dport}/tcp"]))
             else:
-                key = tuple(sorted([f"[{ip_src}]:{sport}/{l3proto}", f"[{ip_dst}]:{dport}/{l3proto}"]))
+                key = tuple(sorted([f"[{ip_src}]:{sport}/tcp", f"[{ip_dst}]:{dport}/tcp"]))
             pairs_tcp.update([key])
 
         sserv = sport
@@ -289,17 +318,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             SSL,
             _TLSEncryptedContent,
         ]  # these protocols are handled elsewhere in the program
-        if guess_service:  # if user wishes for service to be detected by port
-            try:
-                sserv = getservbyport(sport)
-            except:
-                pass
-            try:
-                dserv = getservbyport(dport)
-            except:
-                pass
         if IP in pkt:
-            l3conversation = f"{ip_src}:{sserv} ==> {ip_dst}:{dserv}"
+            pass
         else:
             l3conversation = f"[{ip_src}]:{sserv} ==> [{ip_dst}]:{dserv}"
 
@@ -403,7 +423,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         if colour:
             pcolours += f"{Fore.LIGHTMAGENTA_EX}"
 
-        protocol += f"ARP - {ether_src} ==> {ether_dst} | "
+        protocol += f"ARP - {l1conversation} | "
         if arp.op == 1:  # ARP who has the MAC for this IP
             protocol += f"{arp.psrc} is asking who has MAC for {arp.pdst}"
         elif arp.op == 2:  # ARP here's your MAC
@@ -411,7 +431,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
     elif ICMP in pkt:
         icmp = pkt[ICMP]
-        protocol += f"ICMP - {ip_src} ==> {ip_dst} | {icmp.sprintf('%ICMP.type%')}"
+        protocol += f"ICMP - {l2conversation} | {icmp.sprintf('%ICMP.type%')}"
 
     elif IGMP in pkt or IGMPv3 in pkt:
         if IGMP in pkt:
@@ -419,7 +439,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         else:
             igmp = pkt[IGMPv3]
             protocol += (
-                f"IGMPv3 - {ip_src} ==> {ip_dst} | {igmp.igmpv3types[igmp.type]}"
+                f"IGMPv3 - {l2conversation} | {igmp.igmpv3types[igmp.type]}"
             )
 
     elif TLS in pkt:  # handles TLS
@@ -477,11 +497,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             reason = res.Reason_Phrase.decode()
             version = res.Http_Version.decode()
             status_code = f"{status}: '{reason}'"  # Status code e.g '404: Not found'
-            protocol += f"HTTP - {l3conversation} ==> {ip_dst}:{dport} | VERSION: {version} | STATUS: '{status_code}'"
+            protocol += f"HTTP - {l3conversation} | VERSION: {version} | STATUS: '{status_code}'"
         else:
             http = pkt[HTTP]
             content = http.Content.decode()
-            protocol += f"HTTP - {l3conversation} ==> {ip_dst}:{dport} | CONTENT: {content}"
+            protocol += f"HTTP - {l3conversation} | CONTENT: {content}"
 
     elif DNS in pkt:  # handles DNS
         if colour:
@@ -489,7 +509,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
         dns = pkt[DNS]
         if dport == 5353 and sport == 5353:
-            protocol += f"MDNS - {ip_src} ==> {ip_dst} | "
+            protocol += f"MDNS - {l2conversation} | "
         else:
             protocol += f"DNS - {l3conversation} | "
         protocol += dns.mysummary()
@@ -516,7 +536,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f" | {pkt[NBNSQueryResponse].mysummary()}"
 
     elif RIP in pkt:  # handles RIP
-        protocol += f"RIP - {ip_src} ==> {ip_dst}"
+        protocol += f"RIP - {l2conversation}"
         if RIPEntry in pkt:
             entry = pkt[RIPEntry]
             mask = entry.mask
@@ -530,10 +550,10 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 protocol += "IPv4"
             elif IPv6 in pkt: 
                 protocol += "IPv6"
-            protocol += f" - {ip_src} ==> {ip_dst}"
+            protocol += f" - {l2conversation}"
         elif Ether in pkt:
             protocol += "Ethernet"
-            protocol += f" - {ether_src} ==> {ether_dst}"
+            protocol += f" - {l1conversation}"
         else:
             protocol += f"UNKNOWN"
     if pcolours != "":
