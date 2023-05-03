@@ -347,80 +347,82 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             SSL,
             _TLSEncryptedContent,
         ]  # these protocols are handled elsewhere in the program
-        if IP in pkt:
-            pass
-        else:
-            l3conversation = f"[{ip_src}]:{sserv} ==> [{ip_dst}]:{dserv}"
 
-        if Raw not in pkt and not any(
-            i in pkt for i in handled_tcp_proto
-        ):  # Raw TCP packet wihh no app data
+        if not any(i in pkt for i in handled_tcp_proto):
             if colour:
                 if "RST" in flags_found:
                     pcolours += Back.BLACK
                     pcolours += Fore.RED
-                elif "SYN" in flags_found:
-                    pcolours += Fore.GREEN
-                elif "ACK" in flags_found:
-                    pcolours += Fore.YELLOW
                 elif "SYN" in flags_found and "ACK" in flags_found:
                     pcolours += Fore.CYAN
+                elif "SYN" in flags_found:
+                    pcolours += Back.BLACK
+                    pcolours += Fore.GREEN
+                elif "PSH" in flags_found:
+                    pcolours += Back.BLACK
+                    pcolours += Fore.MAGENTA
+                elif "ACK" in flags_found:
+                    pcolours += Fore.YELLOW
 
-            ### adds brackets and commas to flags which have more than one bit
             if len(flags_found) > 1:
-                flags_found = f"[{', '.join(flags_found)}]"
+                flags_found = f"[{', '.join(flags_found)}]"# adds brackets and commas to flags which have more than one bit
             else:
                 flags_found = f"{flags_found[0]}"
-            ###
 
-            protocol += f"TCP - {l3conversation} | FLAGS: {flags_found}"  # group of flags, else single flag
+            if Raw in pkt:  # Raw TCP packet wihh no app data
+                if sport > dport:  # lower port numbers are prioritised
+                    try:
+                        rec_proto = getservbyport(dport)  # guesses dst port service
+                    except:
+                        try:
+                            rec_proto = getservbyport(sport)  # guesses src port service
+                        except:
+                            pass
+                elif sport < dport:
+                    try:
+                        rec_proto = getservbyport(sport)  # guesses dst port service
+                    except:
+                        try:
+                            rec_proto = getservbyport(dport)  # guesses src port service
+                        except:
+                            pass
+                else:
+                    try:
+                        rec_proto = getservbyport(
+                            sport
+                        )  # order doesn't matter as src and dst ports are the same
+                    except:
+                        pass
+                if rec_proto:  # if there's a guess
+                    protocol += rec_proto.upper()
+                else:  # if it still has no idea, it just displays its a TCP protocol
+                    protocol += "TCP"
+                protocol += f" - {l3conversation}"
+            else:
+                protocol += f"TCP - {l3conversation}"
+            protocol += f" | FLAGS: {flags_found}"  # group of flags, else single flag
             if verbose:  # if user wants more information
                 protocol += f" | SEQ: {seq} | ACK: {ack}"
-        elif Raw in pkt and not any(i in pkt for i in handled_tcp_proto):
-            if sport > dport:  # lower port numbers are prioritised
-                try:
-                    rec_proto = getservbyport(dport)  # guesses dst port service
-                except:
-                    try:
-                        rec_proto = getservbyport(sport)  # guesses src port service
-                    except:
-                        pass
-            elif sport < dport:
-                try:
-                    rec_proto = getservbyport(sport)  # guesses dst port service
-                except:
-                    try:
-                        rec_proto = getservbyport(dport)  # guesses src port service
-                    except:
-                        pass
-            else:
-                try:
-                    rec_proto = getservbyport(
-                        sport
-                    )  # order doesn't matter as src and dst ports are the same
-                except:
-                    pass
-            if rec_proto:  # if there's a guess
-                protocol += rec_proto.upper()
-            else:  # if it still has no idea, it just displays its a TCP protocol
-                protocol += "TCP"
-            protocol += f" - {l3conversation}"
+            
+            
+
     elif UDP in pkt:  # if its not TCP must be UDP
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
-        if IP in pkt:
-            key = tuple(
-                sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"])
-            )
-        else:
-            key = tuple(
-                sorted(
-                    [f"[{ip_src}]:{sport}/udp", f"[{ip_dst}]:{dport}/udp"]
+
+        if ls_convos:
+            if IP in pkt:
+                key = tuple(
+                    sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"])
                 )
-            )
-        pairs_tcp.update([key])
-        sserv = sport
-        dserv = dport
+            else:
+                key = tuple(
+                    sorted(
+                        [f"[{ip_src}]:{sport}/udp", f"[{ip_dst}]:{dport}/udp"]
+                    )
+                )
+            pairs_tcp.update([key])
+
         handled_udp_proto = [
             DHCP,
             DNS,
@@ -431,15 +433,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             SSL,
             _TLSEncryptedContent,
         ]  # these protocols are handled elsewhere in the program
-        if guess_service:
-            try:
-                sserv = getservbyport(sport)
-            except:
-                pass
-            try:
-                dserv = getservbyport(dport)
-            except:
-                pass
         if not any(i in pkt for i in handled_udp_proto) and not any(i in pkt for i in DHCP6_TYPES):  # raw UDP packets with no app data
             if colour:
                 pcolours += Fore.BLUE
@@ -522,9 +515,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             status_code = f"{status}: '{reason}'"  # Status code e.g '404: Not found'
             protocol += f"HTTP - {l3conversation} | VERSION: {version} | STATUS: '{status_code}'"
         else:
-            http = pkt[HTTP]
-            content = http.Content.decode()
-            protocol += f"HTTP - {l3conversation} | CONTENT: {content}"
+            protocol += f"HTTP - {l3conversation}"
 
     elif DNS in pkt:  # handles DNS
         if colour:
