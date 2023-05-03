@@ -288,22 +288,24 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
         if any(
-            i in pkt for i in [NDP_RS, NDP_NA, NDP_RA, NDP_NS]
+            i in pkt for i in [NDP_RS, NDP_NA, NDP_RA, NDP_NS,ICMPv6MLReport,ICMPv6MLReport2]
         ):  # checks if pkt is NDP
-            pcolours += Fore.BLACK
-            pcolours += Back.WHITE
+            if colour:
+                pcolours += Fore.WHITE
+                pcolours += Back.BLACK
+            protocol += f"IPv6 - {l2conversation}"
             if NDP_RS in pkt:  # router soliciation
-                protocol += f"NDP - {l2conversation} | Router solication"
+                protocol += " | NDP Router solication"
             if NDP_NA in pkt:  # neighbour advertisement
-                protocol += f"NDP - {l2conversation} | Neighbour advertisement"
+                protocol += " | NDP Neighbour advertisement"
             if NDP_RA in pkt:  # router advertisement
-                protocol += f"NDP - {l2conversation} | Router advertisement"
+                protocol += " | NDP Router advertisement"
             if NDP_NS in pkt:  # neighbour solicitation
-                protocol += f"NDP - {l2conversation} | Neighbour solicitation"
-        if ICMPv6MLReport in pkt:
-            protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v1"
-        if ICMPv6MLReport2 in pkt:
-            protocol += f"IPv6 - {l2conversation} | Multicast Listener Report v2"
+                protocol += " | NDP Neighbour solicitation"
+            if ICMPv6MLReport in pkt:
+                protocol += " | Multicast Listener Report v1"
+            if ICMPv6MLReport2 in pkt:
+                protocol += " | Multicast Listener Report v2"
 
     if TCP in pkt:  # any TCP data in packet
         sport = pkt[TCP].sport
@@ -572,6 +574,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                 protocol += "IPv4"
             elif IPv6 in pkt:
                 protocol += "IPv6"
+                if colour:
+                    pcolours += Fore.WHITE
+                    pcolours += Back.BLACK
             protocol += f" - {l2conversation}"
         elif Ether in pkt:
             protocol += "Ethernet"
