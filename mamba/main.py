@@ -534,8 +534,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
     elif DHCP in pkt:  # handles DHCP
         if colour:
-            pcolours += Fore.BLACK
-            pcolours += Back.BLUE
+            pcolours += Back.BLACK
+            pcolours += Fore.BLUE
         dhcp = pkt[DHCP]
         protocol += f"DHCP - {l3conversation} | {dhcp.mysummary()}"
 
