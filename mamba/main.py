@@ -765,8 +765,6 @@ if __name__ == "__main__":
             )
         else:  # must be listening on interface
             m.err(f"failed to sniff on {iface} due to: '{e.strerror.lower()}'", colour)
-
-        exit(e.errno)
     except Scapy_Exception as e:
         if rpcap:
             m.err(f"failed to read from '{rpcap}' due to: '{str(e).lower()}'", colour)
