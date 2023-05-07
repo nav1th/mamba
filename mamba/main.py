@@ -85,8 +85,9 @@ from scapy.layers.dhcp6 import (
     DHCP6_InfoRequest,
     DHCP6_RelayForward,
     DHCP6_RelayReply,
-    dhcp6types
+    dhcp6types,
 )
+
 DHCP6_TYPES = [
     DHCP6_Reply,
     DHCP6_Renew,
@@ -226,10 +227,12 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     sport = None
     dport = None
 
-    l1conversation = None # conversation on layer 1 such as 'ff:ff:ff:ff:ff:ff ==> de:ad:be:ee:ee:ef' 
-    l2conversation = None # conversation on layer 2 such as '192.168.20.3 ==> 192.168.20.53'
-    l3conversation = None # conversation on layer 3 such as '192.168.20.3:80 ==> 192.168.20.53:53261'
-   
+    l1conversation = None  # conversation on layer 1 such as 'ff:ff:ff:ff:ff:ff ==> de:ad:be:ee:ee:ef'
+    l2conversation = (
+        None  # conversation on layer 2 such as '192.168.20.3 ==> 192.168.20.53'
+    )
+    l3conversation = None  # conversation on layer 3 such as '192.168.20.3:80 ==> 192.168.20.53:53261'
+
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
@@ -288,7 +291,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             key = tuple(sorted([ip_src, ip_dst]))
             pairs_ipv6.update([key])
         if any(
-            i in pkt for i in [NDP_RS, NDP_NA, NDP_RA, NDP_NS,ICMPv6MLReport,ICMPv6MLReport2]
+            i in pkt
+            for i in [NDP_RS, NDP_NA, NDP_RA, NDP_NS, ICMPv6MLReport, ICMPv6MLReport2]
         ):  # checks if pkt is NDP
             if colour:
                 pcolours += Fore.WHITE
@@ -362,12 +366,12 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                     pcolours += Fore.GREEN
                 elif "PSH" in flags_found:
                     pcolours += Back.BLACK
-                    pcolours += Fore.MAGENTA
+                    pcolours += Fore.LIGHTMAGENTA_EX
                 elif "ACK" in flags_found:
                     pcolours += Fore.YELLOW
 
             if len(flags_found) > 1:
-                flags_found = f"[{', '.join(flags_found)}]"# adds brackets and commas to flags which have more than one bit
+                flags_found = f"[{', '.join(flags_found)}]"  # adds brackets and commas to flags which have more than one bit
             else:
                 flags_found = f"{flags_found[0]}"
 
@@ -405,8 +409,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f" | FLAGS: {flags_found}"  # group of flags, else single flag
             if verbose:  # if user wants more information
                 protocol += f" | SEQ: {seq} | ACK: {ack}"
-            
-            
 
     elif UDP in pkt:  # if its not TCP must be UDP
         sport = pkt[UDP].sport
@@ -414,14 +416,10 @@ def proc_pkt(pkt):  # handles packets depending on protocol
 
         if ls_convos:
             if IP in pkt:
-                key = tuple(
-                    sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"])
-                )
+                key = tuple(sorted([f"{ip_src}:{sport}/udp", f"{ip_dst}:{dport}/udp"]))
             else:
                 key = tuple(
-                    sorted(
-                        [f"[{ip_src}]:{sport}/udp", f"[{ip_dst}]:{dport}/udp"]
-                    )
+                    sorted([f"[{ip_src}]:{sport}/udp", f"[{ip_dst}]:{dport}/udp"])
                 )
             pairs_tcp.update([key])
 
@@ -435,7 +433,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             SSL,
             _TLSEncryptedContent,
         ]  # these protocols are handled elsewhere in the program
-        if not any(i in pkt for i in handled_udp_proto) and not any(i in pkt for i in DHCP6_TYPES):  # raw UDP packets with no app data
+        if not any(i in pkt for i in handled_udp_proto) and not any(
+            i in pkt for i in DHCP6_TYPES
+        ):  # raw UDP packets with no app data
             if colour:
                 pcolours += Fore.BLUE
             protocol += f"UDP - {l3conversation}"
@@ -504,11 +504,19 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             url = (
                 host + path
             )  # the location of website e.g. 'http://hello.com/register/login'
-            method = (
-                req.Method.decode()
-            )  # e.g method used in request e.g. 'GET' or 'POST'
+            method = req.Method.decode()  # method used in request e.g. 'GET' or 'POST'
             version = req.Http_Version.decode()  # http version of request 'HTTP/1.1'
+
             protocol += f"HTTP - {l3conversation} | VERSION: {version} | URL: {url} | METHOD: {method}"
+            if req.User_Agent:  # agent used in request e.g. Firefox
+                protocol += f" | Agent: {req.User_Agent.decode()}"
+            if req.Connection:
+                protocol += f" | Connection: {req.Connection.decode()}"
+            if req.Content_Type:
+                protocol += f" | Content-Type: {req.Content_Type.decode()}"
+            if req.Content_Length:
+                protocol += f" | Content-Length: {req.Content_Length.decode()}"
+
         elif HTTPRes in pkt:
             res = pkt[HTTPRes]
             status = res.Status_Code.decode()
@@ -516,8 +524,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             version = res.Http_Version.decode()
             status_code = f"{status}: '{reason}'"  # Status code e.g '404: Not found'
             protocol += f"HTTP - {l3conversation} | VERSION: {version} | STATUS: '{status_code}'"
+            if res.Server:
+                protocol += f" | Server: {res.Server.decode()}"
+            if res.Content_Type:
+                protocol += f" | Content-Type: {res.Content_Type.decode()}"
+            if res.Content_Length:
+                protocol += f" | Content-Length: {res.Content_Length.decode()}"
         else:
-            protocol += f"HTTP - {l3conversation}"
+            protocol += f"HTTP-DATA - {l3conversation}"
 
     elif DNS in pkt:  # handles DNS
         if colour:
@@ -796,6 +810,5 @@ if __name__ == "__main__":
                         for addr, amount in pairs_udp.items():
                             convos += f"{addr[0]} <==> {addr[1]}: {amount}\n"
             print(convos)
-    if platform == "win32": #stop program exiting automatically, saving output
+    if platform == "win32":  # stop program exiting automatically, saving output
         input("\npress enter to exit...")
-
