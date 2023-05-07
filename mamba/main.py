@@ -21,11 +21,10 @@ from colorama import Fore, Back, Style
 from scapy.main import load_layer
 from scapy.all import sniff, Raw, wrpcap, get_working_ifaces
 from scapy.error import Scapy_Exception
-from scapy.data import ETHER_TYPES, load_ethertypes
+from scapy.data import ETHER_TYPES
 
 # Scapy Ethernet & ARP
 from scapy.layers.l2 import ARP, Ether, Dot3, SNAP
-ETHER_TYPES
 
 # Scapy IPv4, ICMP, TCP & UDP
 from scapy.layers.inet import IP, TCP, UDP, ICMP
