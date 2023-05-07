@@ -238,21 +238,15 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
-    print_str = ""
-    number: int
+    print_str = "" # final string made of printing
+    packet_number: int # number of packet
     key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 2 conversations
     pairs_l2.update([key])  # stores sorted layer 2 conversations
-    number = sum(pairs_l2.values())  # updates packet count
+    packet_number = sum(pairs_l2.values())  # updates packet count
 
-    if Ether in pkt:  # grab ethernet info if any
-        ether_src = pkt[Ether].src
-        ether_dst = pkt[Ether].dst
-        type = pkt[Ether].type
-        print(hex(type))
-        l1conversation = f"{ether_src} ==> {ether_dst}"
-    if Dot3 in pkt:
-        ether_src = pkt[Dot3].src
-        ether_dst = pkt[Dot3].dst
+    if Ether in pkt or Dot3 in pkt:  # grab ethernet info if any
+        ether_src = pkt[0].src
+        ether_dst = pkt[0].dst
         l1conversation = f"{ether_src} ==> {ether_dst}"
 
     if IP in pkt:  # grab ipv4 info if any
@@ -614,7 +608,7 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     if pcolours != "":
         print_str += pcolours
     if count_enabled:
-        print_str += f"#{number} "
+        print_str += f"#{packet_number} "
     if date_enabled:
         time = int(pkt[0].time)
         date = datetime.utcfromtimestamp(time).strftime("%d-%m-%Y %H:%M:%S")
@@ -727,6 +721,7 @@ if __name__ == "__main__":
                 exit(retval)
 
     pairs_l2 = Counter()  # this is to count packets and print L2 conversations
+
     # the rest are purely for printing conversations
     pairs_ipv4 = Counter()
     pairs_ipv6 = Counter()
