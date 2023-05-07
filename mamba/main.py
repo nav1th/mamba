@@ -26,6 +26,13 @@ from scapy.data import ETHER_TYPES
 # Scapy Ethernet & ARP
 from scapy.layers.l2 import ARP, Ether, Dot3, SNAP
 
+CISCO_ETHER_TYPES = {
+    0x2000: "Cisco CDP",
+    0x2003: "Cisco VTP",
+    0x2004: "Cisco DTP",
+    0x010B: "Cisco PVSTP+",
+}
+
 # Scapy IPv4, ICMP, TCP & UDP
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 
@@ -237,8 +244,8 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
-    print_str = "" # final string made of printing
-    packet_number: int # number of packet
+    print_str = ""  # final string made of printing
+    packet_number: int  # number of packet
     key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 2 conversations
     pairs_l2.update([key])  # stores sorted layer 2 conversations
     packet_number = sum(pairs_l2.values())  # updates packet count
@@ -561,7 +568,9 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             pcolours += Fore.BLACK
             pcolours += Back.BLUE
         protocol += f"DHCPv6 - {l3conversation}"
-        protocol += f" | {dhcp6types[pkt[3].msgtype].capitalize()}"
+        protocol += (
+            f" | {dhcp6types[pkt[3].msgtype].capitalize()}"  # detects dhcpv6 type used
+        )
 
     elif NTP in pkt:
         ntp = pkt[NTP]
@@ -595,12 +604,22 @@ def proc_pkt(pkt):  # handles packets depending on protocol
             protocol += f" - {l2conversation}"
         if Ether in pkt or Dot3 in pkt:
             if Ether in pkt:
-                protocol += f"{ETHER_TYPES[pkt[Ether].type]}"  # prints type of ethernet protocol
-            elif Dot3 in pkt:
-                if SNAP in pkt:
-                    protocol += "802.3"
+                if pkt[Ether].type in ETHER_TYPES:
+                    protocol += f"{ETHER_TYPES[pkt[Ether].type]}"  # prints general ethernet type
+                elif pkt[Ether].type in CISCO_ETHER_TYPES:
+                    protocol += f"{CISCO_ETHER_TYPES[pkt[Ether].type]}"  # prints type of ethernet protocol
                 else:
-                    protocol += "802.3"
+                    protocol += "Ethernet II"  # can't detect EtherType
+            elif SNAP in pkt:
+                if pkt[SNAP].code in ETHER_TYPES:
+                    protocol += f"{ETHER_TYPES[pkt[SNAP].code]}"  # prints code of ethernet protocol
+                elif pkt[SNAP].code in CISCO_ETHER_TYPES:
+                    protocol += f"{CISCO_ETHER_TYPES[pkt[SNAP].code]}"  # prints code of ethernet protocol
+                else:
+                    protocol += "Ethernet (802.3)"  # can't detect EtherType
+            else:  # must be 802.3 without SNAP EtherType can't be detected
+                protocol += "Ethernet (802.3)"
+
             protocol += f" - {l1conversation}"
         else:
             protocol += f"UNKNOWN"
