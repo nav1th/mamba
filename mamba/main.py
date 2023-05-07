@@ -23,7 +23,7 @@ from scapy.all import sniff, Raw, wrpcap, get_working_ifaces
 from scapy.error import Scapy_Exception
 
 # Scapy Ethernet & ARP
-from scapy.layers.l2 import ARP, Ether
+from scapy.layers.l2 import ARP, Ether, Dot3
 
 # Scapy IPv4, ICMP, TCP & UDP
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -245,6 +245,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     if Ether in pkt:  # grab ethernet info if any
         ether_src = pkt[Ether].src
         ether_dst = pkt[Ether].dst
+        type = pkt[Ether].type
+        l1conversation = f"{ether_src} ==> {ether_dst}"
+    if Dot3 in pkt:
+        ether_src = pkt[Dot3].src
+        ether_dst = pkt[Dot3].dst
         l1conversation = f"{ether_src} ==> {ether_dst}"
 
     if IP in pkt:  # grab ipv4 info if any
@@ -592,8 +597,11 @@ def proc_pkt(pkt):  # handles packets depending on protocol
                     pcolours += Fore.WHITE
                     pcolours += Back.BLACK
             protocol += f" - {l2conversation}"
-        elif Ether in pkt:
-            protocol += "Ethernet"
+        if Ether in pkt or Dot3 in pkt:
+            if Ether in pkt:
+                protocol += f"{pkt[Ether].mysummary().split(' ')[3][1:-1]}"  # prints type of ethernet protocol
+            elif Dot3 in pkt:
+                protocol += "802.3"
             protocol += f" - {l1conversation}"
         else:
             protocol += f"UNKNOWN"
