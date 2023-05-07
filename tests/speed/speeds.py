@@ -12,25 +12,23 @@ def mean(*nums: list[float]):
         return means[0]
     return means
 
-prog_index = ([
-                ("mamba",0),
-                ("tcpdump",1),
-                ("tshark",2)],
-                "572kb"),([("mamba",3),("tcpdump",4),("tshark",5)],"18mb")
 
-for f_size_tests in prog_index:
-    print(f_size_tests[1])
-    for prog in f_size_tests:  
-    means_572kb = mean(avrg)
-    
-means_18mb = mean(mamba_speeds_18mb, tcpdump_speeds_18mb, tshark_speeds_18mb)
+d_tests = (
+    ([("mamba", 0), ("tcpdump", 1), ("tshark", 2)], "572kb"),
+    ([("mamba", 3), ("tcpdump", 4), ("tshark", 5)], "18mb"),
+)
 
-for x, y in prog_index:
-    print(f"{x}: {means_572kb[y]} secs")
+print("D1 tests")
+for f_size_tests in d_tests:
+    print(f"\t\n###{f_size_tests[1]}###")  #  file size
+    for x in f_size_tests[0]:  # each program and their index relative to D1
+        print(f"\t{x[0]}: {mean(D1[x[1]])}")  # mean of d1 tests
 
-print("\n18mb pcap\n")
-for x, y in prog_index:
-    print(f"{x}: {means_18mb[y]} secs")
+print("D2 tests")
+for f_size_tests in d_tests:
+    print(f"\t\n###{f_size_tests[1]}###")  #  file size
+    for x in f_size_tests[0]:  # each program and their index relative to D1
+        print(f"\t{x[0]}: {mean(D2[x[1]])}")  # mean of d1 tests
 
 if sys.platform == "win32":
     input("press enter to exit...")
