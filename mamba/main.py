@@ -729,13 +729,17 @@ if __name__ == "__main__":
                 print(f"{next(cy_col_ls)}{iface}{Style.RESET_ALL}")
             else:
                 print(f"{iface}")
+        if platform == "win32":
+            input("\npress enter to exit...")
         exit(0)
 
     if (
         wpcap
-    ):  # checks beforehand to avoid packet capture and discovering at the end you can't write the file
+    ):  # checks beforehand to prevent the user discovering at the end of live capture they can't write to file
         match check_write_ok(wpcap):
             case (False, retval, _):
+                if platform == "win32":
+                    input("\npress enter to exit...")
                 exit(retval)
 
     pairs_l2 = Counter()  # this is to count packets and print L2 conversations
@@ -761,6 +765,7 @@ if __name__ == "__main__":
             )
         else:  # must be listening on interface
             m.err(f"failed to sniff on {iface} due to: '{e.strerror.lower()}'", colour)
+
         exit(e.errno)
     except Scapy_Exception as e:
         if rpcap:
@@ -777,6 +782,8 @@ if __name__ == "__main__":
             if confirm and not m.prompt(
                 "Do you wish to save the pcap?", colour
             ):  # wont prompt if user said no
+                if platform == "win32":
+                    input("\npress enter to exit...")
                 exit(0)
             wpcap = input("Save it as: ")
             match check_write_ok(wpcap):
