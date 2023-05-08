@@ -14,6 +14,7 @@ from sys import platform
 import os.path
 import string
 
+
 # Colorama
 from colorama import Fore, Back, Style
 
@@ -246,9 +247,14 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     payload = ""  # application data payload
     print_str = ""  # final string made of printing
     packet_number: int  # number of packet
-    key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 2 conversations
-    pairs_l2.update([key])  # stores sorted layer 2 conversations
-    packet_number = sum(pairs_l2.values())  # updates packet count
+    try:
+        key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 1 conversations
+    except:
+        m.warn(f"Mamba does not support packet type {str(type(pkt)).split('.')[2]} only supports Ethernet-based packets currently",colour)
+        return
+    else:
+        pairs_l2.update([key])  # stores sorted layer 2 conversations
+        packet_number = sum(pairs_l2.values())  # updates packet count
 
     if Ether in pkt or Dot3 in pkt:  # grab ethernet info if any
         ether_src = pkt[0].src
