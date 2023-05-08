@@ -477,9 +477,6 @@ def proc_pkt(pkt):  # handles packets depending on protocol
         # decides what kind of TLS version the packet is
         if TLSAlert in pkt:
             protocol += pkt[TLSAlert].name
-            if verbose:
-                protocol += f" {pkt[TLSAlert].level}"
-                protocol += f" {pkt[TLSAlert].desc}"
         elif TLSClientHello in pkt:
             protocol += pkt[TLSClientHello].name
         elif TLSApplicationData in pkt:
