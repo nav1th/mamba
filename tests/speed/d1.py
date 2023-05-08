@@ -6,7 +6,7 @@ mamba_speeds_18mb = [45.66, 45.66, 51.10, 48.95, 49.37]
 tcpdump_speeds_18mb = [10.29, 8.79, 8.12, 7.99, 8.00]
 tshark_speeds_18mb = [3.78, 3.04, 2.92, 3.06, 3.17]
 
-D1 = [
+D1 = [  # device 1 speeds
     mamba_speeds_572kb,
     tcpdump_speeds_572kb,
     tshark_speeds_572kb,
