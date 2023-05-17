@@ -236,21 +236,24 @@ def proc_pkt(pkt):  # handles packets depending on protocol
     sport = None
     dport = None
 
-    l1conversation = None  # conversation on layer 1 such as 'ff:ff:ff:ff:ff:ff ==> de:ad:be:ee:ee:ef'
+    l1conversation = None  # conversation on layer 2 such as 'ff:ff:ff:ff:ff:ff ==> de:ad:be:ee:ee:ef'
     l2conversation = (
-        None  # conversation on layer 2 such as '192.168.20.3 ==> 192.168.20.53'
+        None  # conversation on layer 3 such as '192.168.20.3 ==> 192.168.20.53'
     )
-    l3conversation = None  # conversation on layer 3 such as '192.168.20.3:80 ==> 192.168.20.53:53261'
+    l3conversation = None  # conversation on layer 4 such as '192.168.20.3:80 ==> 192.168.20.53:53261'
 
     pcolours = ""  # colours for printing
     protocol = ""  # protocol type along with its attributes
     payload = ""  # application data payload
     print_str = ""  # final string made of printing
-    packet_number: int  # number of packet
+    packet_number = 0  # number of packets
     try:
-        key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 1 conversations
+        key = tuple(sorted([pkt[0].src, pkt[0].dst]))  # sorts layer 2 conversations
     except:
-        m.warn(f"Mamba does not support packet type {str(type(pkt)).split('.')[2]} only supports Ethernet-based packets currently",colour)
+        m.warn(
+            f"Mamba does not support packet #{packet_number+1} type {str(type(pkt)).split('.')[2]} only supports Ethernet-based packets currently",
+            colour,
+        )
         return
     else:
         pairs_l2.update([key])  # stores sorted layer 2 conversations
@@ -800,18 +803,18 @@ if __name__ == "__main__":
                         colour,
                     )
         if ls_convos:  ##list conversations between two different addresses at the end
-            # first part is for layer 1 which will always be there
-            convos = "\n###layer 1###\n"
-            if colour:
-                for addr, amount in pairs_l2.items():
-                    convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
-            else:
-                for addr, amount in pairs_l2.items():
-                    convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
+            convos = "\n###layer 2###\n"
+            if pairs_l2:
+                if colour:
+                    for addr, amount in pairs_l2.items():
+                        convos += f"{next(cy_col_ls)}{addr[0]} <==> {addr[1]}': {amount}{Style.RESET_ALL}\n"
+                else:
+                    for addr, amount in pairs_l2.items():
+                        convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
             if (
                 pairs_ipv4 or pairs_ipv6
-            ):  # there may or may not be stuff going on no higher than layer 2
-                convos += "\n\n\n###layer 2###\n"
+            ):  # there may or may not be stuff going on no higher than layer 3
+                convos += "\n\n\n###layer 3###\n"
                 if pairs_ipv4:
                     if colour:
                         for addr, amount in pairs_ipv4.items():
@@ -828,8 +831,8 @@ if __name__ == "__main__":
                             convos += f"{addr[0]} <==> {addr[1]}': {amount}\n"
             if (
                 pairs_tcp or pairs_udp
-            ):  # there may or may not be stuff going on at layer 3
-                convos += "\n\n\n###layer 3###\n"
+            ):  # there may or may not be stuff going on at layer 4
+                convos += "\n\n\n###layer 4###\n"
                 if pairs_tcp:  # if theres tcp conversations
                     if colour:
                         for addr, amount in pairs_tcp.items():
